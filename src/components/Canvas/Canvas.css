@@ -1,0 +1,15 @@
+.canvas-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.tool-pen    { cursor: crosshair; }
+.tool-eraser { cursor: cell; }
+
+.drawing-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  /* canvas é transparente — o fundo do papel aparece através dele */
+}

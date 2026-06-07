@@ -1,0 +1,219 @@
+/* ── Layout principal ────────────────────────────────────────────────────── */
+
+.library {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-library);
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.library-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 28px;
+  height: 58px;
+  flex-shrink: 0;
+  background: rgba(232, 238, 246, 0.80);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.library-logo {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--blue-500);
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+
+/* ── Breadcrumb ──────────────────────────────────────────────────────────── */
+
+.library-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.breadcrumb-back {
+  font-size: var(--text-sm);
+  color: var(--blue-400);
+  font-weight: 500;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+}
+
+.breadcrumb-back:hover { color: var(--blue-500); }
+
+.breadcrumb-sep {
+  color: var(--gray-300);
+  font-size: var(--text-sm);
+}
+
+.breadcrumb-current {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Ações do header ─────────────────────────────────────────────────────── */
+
+.library-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.lib-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: var(--font-sans);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  border: none;
+  transition: all var(--duration-normal) var(--ease-out);
+  white-space: nowrap;
+}
+
+.lib-btn-ghost {
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+.lib-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+.lib-btn-primary {
+  background: var(--blue-400);
+  color: white;
+}
+
+.lib-btn-primary:hover {
+  background: var(--blue-500);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Área de scroll ──────────────────────────────────────────────────────── */
+
+.library-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 36px 32px;
+}
+
+/* ── Grid de cadernos ────────────────────────────────────────────────────── */
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 36px 28px;
+}
+
+/* ── Estado vazio ────────────────────────────────────────────────────────── */
+
+.library-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.library-empty-icon {
+  font-size: 52px;
+  filter: grayscale(0.3);
+  margin-bottom: 4px;
+}
+
+.library-empty h3 {
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+}
+
+.library-empty p {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+/* ── Loading ─────────────────────────────────────────────────────────────── */
+
+.library-loading {
+  text-align: center;
+  padding: 80px 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* ── Modal de pasta (menor que o modal de caderno) ───────────────────────── */
+
+.folder-modal {
+  max-width: 360px !important;
+}
+
+/* ── Lista de pastas para mover ──────────────────────────────────────────── */
+
+.move-list {
+  padding: 8px 12px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.move-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background var(--duration-fast);
+}
+
+.move-item:hover {
+  background: var(--blue-50);
+}
+
+.move-item-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.move-empty {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 16px;
+}

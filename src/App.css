@@ -5,3 +5,25 @@
   overflow: hidden;
   background: var(--bg-library);
 }
+
+.app-editor-placeholder {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--bg-editor);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.back-btn {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--blue-400);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+
+.back-btn:hover { color: var(--blue-500); }

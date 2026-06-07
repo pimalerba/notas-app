@@ -1,40 +1,40 @@
 import { openDB } from 'idb'
 
 const DB_NAME = 'notas-db'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 let dbPromise = null
 
 function getDB() {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        // Cadernos: id, title, createdAt, updatedAt, coverColor
-        if (!db.objectStoreNames.contains('notebooks')) {
-          const notebooks = db.createObjectStore('notebooks', {
-            keyPath: 'id',
-            autoIncrement: false,
-          })
+      upgrade(db, oldVersion, _newVersion, transaction) {
+        // ── v1: stores iniciais ───────────────────────────────────────────────
+        if (oldVersion < 1) {
+          const notebooks = db.createObjectStore('notebooks', { keyPath: 'id' })
           notebooks.createIndex('updatedAt', 'updatedAt')
-        }
+          notebooks.createIndex('folderId', 'folderId')
 
-        // Páginas: id, notebookId, order, updatedAt
-        if (!db.objectStoreNames.contains('pages')) {
-          const pages = db.createObjectStore('pages', {
-            keyPath: 'id',
-            autoIncrement: false,
-          })
+          const pages = db.createObjectStore('pages', { keyPath: 'id' })
           pages.createIndex('notebookId', 'notebookId')
           pages.createIndex('notebookId_order', ['notebookId', 'order'])
+
+          const strokes = db.createObjectStore('strokes', { keyPath: 'id' })
+          strokes.createIndex('pageId', 'pageId')
         }
 
-        // Traços: id, pageId, points (Float32Array serializado), tool, color, size
-        if (!db.objectStoreNames.contains('strokes')) {
-          const strokes = db.createObjectStore('strokes', {
-            keyPath: 'id',
-            autoIncrement: false,
-          })
-          strokes.createIndex('pageId', 'pageId')
+        // ── v2: pastas + PDFs + índice folderId nos cadernos existentes ───────
+        if (oldVersion < 2) {
+          if (oldVersion >= 1) {
+            // Migração: adiciona índice que não existia na v1
+            transaction.objectStore('notebooks').createIndex('folderId', 'folderId')
+          }
+
+          db.createObjectStore('folders', { keyPath: 'id' })
+            .createIndex('updatedAt', 'updatedAt')
+
+          // Dados binários dos PDFs ficam isolados do restante
+          db.createObjectStore('pdfs', { keyPath: 'id' })
         }
       },
     })
@@ -61,18 +61,42 @@ export async function putNotebook(notebook) {
 
 export async function deleteNotebook(id) {
   const db = await getDB()
-  const tx = db.transaction(['notebooks', 'pages', 'strokes'], 'readwrite')
+  const tx = db.transaction(['notebooks', 'pages', 'strokes', 'pdfs'], 'readwrite')
 
-  // Remove todas as páginas e traços do caderno em cascata
   const pages = await tx.objectStore('pages').index('notebookId').getAll(id)
   for (const page of pages) {
     const strokes = await tx.objectStore('strokes').index('pageId').getAll(page.id)
-    for (const stroke of strokes) {
-      tx.objectStore('strokes').delete(stroke.id)
-    }
+    for (const stroke of strokes) tx.objectStore('strokes').delete(stroke.id)
     tx.objectStore('pages').delete(page.id)
   }
   tx.objectStore('notebooks').delete(id)
+  tx.objectStore('pdfs').delete(id) // no-op se não for PDF
+
+  await tx.done
+}
+
+// ─── Folders ──────────────────────────────────────────────────────────────────
+
+export async function getAllFolders() {
+  const db = await getDB()
+  return db.getAllFromIndex('folders', 'updatedAt')
+}
+
+export async function putFolder(folder) {
+  const db = await getDB()
+  await db.put('folders', folder)
+}
+
+export async function deleteFolder(id) {
+  const db = await getDB()
+  const tx = db.transaction(['folders', 'notebooks'], 'readwrite')
+
+  // Move cadernos da pasta para a raiz antes de deletar
+  const notebooks = await tx.objectStore('notebooks').index('folderId').getAll(id)
+  for (const nb of notebooks) {
+    tx.objectStore('notebooks').put({ ...nb, folderId: null })
+  }
+  tx.objectStore('folders').delete(id)
 
   await tx.done
 }
@@ -95,9 +119,7 @@ export async function deletePage(id) {
   const tx = db.transaction(['pages', 'strokes'], 'readwrite')
 
   const strokes = await tx.objectStore('strokes').index('pageId').getAll(id)
-  for (const stroke of strokes) {
-    tx.objectStore('strokes').delete(stroke.id)
-  }
+  for (const stroke of strokes) tx.objectStore('strokes').delete(stroke.id)
   tx.objectStore('pages').delete(id)
 
   await tx.done
@@ -126,4 +148,17 @@ export async function deleteStrokesByPage(pageId) {
   const strokes = await tx.store.index('pageId').getAll(pageId)
   for (const s of strokes) tx.store.delete(s.id)
   await tx.done
+}
+
+// ─── PDFs ─────────────────────────────────────────────────────────────────────
+
+export async function putPdfData(id, arrayBuffer) {
+  const db = await getDB()
+  await db.put('pdfs', { id, data: arrayBuffer })
+}
+
+export async function getPdfData(id) {
+  const db = await getDB()
+  const record = await db.get('pdfs', id)
+  return record?.data ?? null
 }
