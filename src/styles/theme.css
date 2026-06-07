@@ -1,0 +1,113 @@
+:root {
+  /* ── Azul pastel principal ──────────────────────────────────────────────── */
+  --blue-50:  #edf4fd;   /* fundos hover muito suaves */
+  --blue-100: #d6e8fa;   /* fundo de itens selecionados */
+  --blue-200: #aecff4;   /* bordas, divisores */
+  --blue-300: #7db3ec;   /* ícones secundários */
+  --blue-400: #4d94e0;   /* ações primárias, botões */
+  --blue-500: #2d74c4;   /* texto sobre fundo claro, links */
+  --blue-600: #1a5499;   /* hover de botão primário */
+
+  /* ── Neutros ────────────────────────────────────────────────────────────── */
+  --gray-50:  #f7f9fc;
+  --gray-100: #eef2f7;
+  --gray-200: #dde5ef;
+  --gray-300: #c4cedc;
+  --gray-400: #8fa3bb;
+  --gray-500: #5e7a96;
+  --gray-600: #3d5570;
+  --gray-700: #243447;
+  --gray-900: #0f1d2a;
+
+  /* ── Fundos de tela ─────────────────────────────────────────────────────── */
+  --bg-library:  #e8eef6;   /* painel da biblioteca — azul acinzentado suave */
+  --bg-sidebar:  #dce5f0;   /* sidebar — um tom abaixo da biblioteca */
+  --bg-editor:   #f5f7fa;   /* área do canvas — quase branco */
+  --bg-canvas:   #ffffff;   /* folha de papel */
+  --bg-toolbar:  #ffffff;   /* barra de ferramentas */
+
+  /* ── Texto ──────────────────────────────────────────────────────────────── */
+  --text-primary:   var(--gray-900);
+  --text-secondary: var(--gray-500);
+  --text-disabled:  var(--gray-300);
+  --text-on-accent: #ffffff;
+
+  /* ── Acento / interação ─────────────────────────────────────────────────── */
+  --accent:          var(--blue-400);
+  --accent-hover:    var(--blue-500);
+  --accent-subtle:   var(--blue-50);
+  --accent-border:   var(--blue-200);
+  --selection-bg:    var(--blue-100);
+
+  /* ── Bordas ─────────────────────────────────────────────────────────────── */
+  --border-subtle:  var(--gray-200);
+  --border-default: var(--gray-300);
+  --border-strong:  var(--gray-400);
+
+  /* ── Cores de capa dos cadernos (8 opções) ──────────────────────────────── */
+  --cover-blue:       #5b9bd5;
+  --cover-sky:        #6ec6e6;
+  --cover-teal:       #4db8a8;
+  --cover-green:      #6abf8a;
+  --cover-yellow:     #e8c84a;
+  --cover-coral:      #e07b5a;
+  --cover-rose:       #d46b8a;
+  --cover-purple:     #9b7fd4;
+
+  /* Lista ordenada para uso programático (espelhada em useNotebooks.js) */
+  --cover-colors: var(--cover-blue), var(--cover-sky), var(--cover-teal),
+                  var(--cover-green), var(--cover-yellow), var(--cover-coral),
+                  var(--cover-rose), var(--cover-purple);
+
+  /* ── Tipografia ─────────────────────────────────────────────────────────── */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --text-xs:   11px;
+  --text-sm:   13px;
+  --text-base: 14px;
+  --text-md:   16px;
+  --text-lg:   20px;
+  --text-xl:   24px;
+  --text-2xl:  32px;
+
+  --leading-tight:  1.25;
+  --leading-normal: 1.5;
+
+  /* ── Border-radius ──────────────────────────────────────────────────────── */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* ── Sombras suaves ─────────────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(15, 29, 42, 0.06);
+  --shadow-sm: 0 2px 6px rgba(15, 29, 42, 0.08),
+               0 1px 2px rgba(15, 29, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 29, 42, 0.10),
+               0 2px 4px  rgba(15, 29, 42, 0.06);
+  --shadow-lg: 0 8px 24px rgba(15, 29, 42, 0.12),
+               0 3px 8px  rgba(15, 29, 42, 0.07);
+  --shadow-xl: 0 16px 40px rgba(15, 29, 42, 0.14),
+               0 6px 14px rgba(15, 29, 42, 0.08);
+
+  /* Sombra especial para capas de caderno (elevação de card) */
+  --shadow-cover: 0 6px 18px rgba(15, 29, 42, 0.18),
+                  0 2px 6px  rgba(15, 29, 42, 0.10);
+
+  /* ── Transições ─────────────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast:   120ms;
+  --duration-normal: 200ms;
+  --duration-slow:   320ms;
+
+  /* ── Z-index scale ──────────────────────────────────────────────────────── */
+  --z-base:    0;
+  --z-raised:  10;
+  --z-overlay: 100;
+  --z-modal:   200;
+  --z-toast:   300;
+}
