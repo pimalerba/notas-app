@@ -52,8 +52,8 @@ export default function Editor({ notebookId, onBack }) {
 
   const {
     strokes, liveStroke,
-    tool, color, strokeSize,
-    setTool, setColor, setStrokeSize,
+    tool, color, strokeSize, eraserMode,
+    setTool, setColor, setStrokeSize, setEraserMode,
     startStroke, addPoint, endStroke, eraseAt,
   } = useDrawing(activePage?.id)
 
@@ -63,9 +63,11 @@ export default function Editor({ notebookId, onBack }) {
         tool={tool}
         color={color}
         strokeSize={strokeSize}
+        eraserMode={eraserMode}
         onSetTool={setTool}
         onSetColor={setColor}
         onSetStrokeSize={setStrokeSize}
+        onSetEraserMode={setEraserMode}
         onBack={onBack}
       />
       <Canvas
