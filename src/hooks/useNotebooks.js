@@ -4,7 +4,10 @@ import {
   putNotebook,
   deleteNotebook as dbDeleteNotebook,
   putPdfData,
+  getPdfData,
+  putPage,
 } from '../db/index.js'
+import { openPdf } from '../utils/pdf.js'
 
 function makeId(prefix = 'nb') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
@@ -75,6 +78,26 @@ export function useNotebooks() {
     await putNotebook(notebook)
     await putPdfData(notebook.id, arrayBuffer)
     setNotebooks((prev) => [notebook, ...prev])
+
+    // Usa a cópia salva no DB para evitar problemas com ArrayBuffer detached
+    try {
+      const storedBuf = await getPdfData(notebook.id)
+      const pdfDoc = await openPdf(storedBuf)
+      const numPages = pdfDoc.numPages
+      for (let i = 0; i < numPages; i++) {
+        await putPage({
+          id: `pg_${notebook.id}_${i}`,
+          notebookId: notebook.id,
+          order: i,
+          pdfPageNum: i + 1,
+          updatedAt: now,
+          thumbnail: null,
+        })
+      }
+    } catch (e) {
+      console.error('[createPdf] falha ao criar páginas:', e)
+    }
+
     return notebook
   }, [])
 

@@ -74,6 +74,12 @@ export function usePages(notebookId) {
     )
   }, [])
 
+  const reloadPages = useCallback(async () => {
+    const loaded = await getPages(notebookId)
+    setPages(loaded)
+    setActivePageId(loaded[0]?.id ?? null)
+  }, [notebookId])
+
   const activePage = pages.find((p) => p.id === activePageId) ?? null
 
   return {
@@ -85,5 +91,6 @@ export function usePages(notebookId) {
     createPage,
     removePage,
     updateThumbnail,
+    reloadPages,
   }
 }

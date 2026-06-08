@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { renderStrokes, renderStroke } from '../../utils/drawing.js'
 import './Canvas.css'
 
@@ -27,6 +27,8 @@ export default function Canvas({
   strokes,
   liveStroke,
   tool,
+  pdfDoc,
+  pdfPageNum,
   onStartStroke,
   onAddPoint,
   onEndStroke,
@@ -34,7 +36,9 @@ export default function Canvas({
 }) {
   const wrapRef = useRef(null)
   const canvasRef = useRef(null)
+  const pdfCanvasRef = useRef(null)
   const isDown = useRef(false)
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
 
   // drawRef sempre aponta para a função de desenho com o closure mais recente
   const drawRef = useRef(null)
@@ -54,16 +58,55 @@ export default function Canvas({
     drawRef.current?.()
   }, [strokes, liveStroke])
 
+  // Renderiza a página do PDF no canvas de fundo
+  useEffect(() => {
+    const pdfCanvas = pdfCanvasRef.current
+    const drawCanvas = canvasRef.current
+    if (!pdfCanvas || !pdfDoc || !pdfPageNum || !drawCanvas || drawCanvas.width === 0) return
+
+    if (pdfCanvas.width !== drawCanvas.width || pdfCanvas.height !== drawCanvas.height) {
+      pdfCanvas.width = drawCanvas.width
+      pdfCanvas.height = drawCanvas.height
+    }
+
+    let cancelled = false
+    let renderTask = null
+
+    pdfDoc.getPage(pdfPageNum).then((page) => {
+      if (cancelled) return
+      const viewport = page.getViewport({ scale: 1 })
+      const scale = Math.min(pdfCanvas.width / viewport.width, pdfCanvas.height / viewport.height)
+      const scaled = page.getViewport({ scale })
+      const ctx = pdfCanvas.getContext('2d')
+      ctx.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height)
+      renderTask = page.render({ canvasContext: ctx, viewport: scaled })
+      return renderTask.promise
+    }).catch((err) => {
+      if (!cancelled) console.error('[PDF render]', err)
+    })
+
+    return () => {
+      cancelled = true
+      renderTask?.cancel()
+    }
+  }, [pdfDoc, pdfPageNum, canvasSize])
+
   // Mantém as dimensões do canvas sincronizadas com o layout
   useEffect(() => {
     const wrap = wrapRef.current
     if (!wrap) return
     const obs = new ResizeObserver(([entry]) => {
-      const canvas = canvasRef.current
-      if (!canvas) return
       const { width, height } = entry.contentRect
-      canvas.width = Math.round(width)
-      canvas.height = Math.round(height)
+      const w = Math.round(width)
+      const h = Math.round(height)
+
+      const canvas = canvasRef.current
+      if (canvas) { canvas.width = w; canvas.height = h }
+
+      const pdfCanvas = pdfCanvasRef.current
+      if (pdfCanvas) { pdfCanvas.width = w; pdfCanvas.height = h }
+
+      setCanvasSize({ width: w, height: h })
       drawRef.current?.()
     })
     obs.observe(wrap)
@@ -109,13 +152,18 @@ export default function Canvas({
       style={{ background: '#ffffff', ...paperStyle }}
     >
       <canvas
+        ref={pdfCanvasRef}
+        className="pdf-canvas"
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: pdfDoc ? 'block' : 'none' }}
+      />
+      <canvas
         ref={canvasRef}
         className="drawing-canvas"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: 'none', position: 'relative' }}
       />
     </div>
   )
