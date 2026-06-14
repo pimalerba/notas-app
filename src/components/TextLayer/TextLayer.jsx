@@ -18,17 +18,41 @@ function TextElement({ el, isSelected, isTextTool, onSelect, onUpdate, onDelete 
   const dragStart = useRef(null)
   const contentRef = useRef(null)
 
+  // Set DOM content imperatively when element loads or page changes.
+  // We never let React control the children of the contenteditable div —
+  // that would reset the cursor on every keystroke (causing reverse typing).
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.textContent = el.content || ''
+    }
+  }, [el.id]) // only re-sync on element identity change, not on every content update
+
   // Enter edit mode when just created (empty element selected)
   useEffect(() => {
     if (isSelected && el.content === '' && isTextTool) {
-      setEditing(true)
-      setTimeout(() => contentRef.current?.focus(), 0)
+      enterEdit()
     }
-  }, [isSelected, el.content, isTextTool])
+  }, [isSelected, isTextTool]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isSelected) setEditing(false)
   }, [isSelected])
+
+  function enterEdit() {
+    setEditing(true)
+    setTimeout(() => {
+      const el = contentRef.current
+      if (!el) return
+      el.focus()
+      // Place cursor at end
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      range.collapse(false)
+      const sel = window.getSelection()
+      sel.removeAllRanges()
+      sel.addRange(range)
+    }, 0)
+  }
 
   // ── Drag to move ──────────────────────────────────────────────────────────
 
@@ -80,12 +104,12 @@ function TextElement({ el, isSelected, isTextTool, onSelect, onUpdate, onDelete 
   function handleDoubleClick(e) {
     e.stopPropagation()
     onSelect()
-    setEditing(true)
-    setTimeout(() => contentRef.current?.focus(), 0)
+    enterEdit()
   }
 
   function handleContentInput(e) {
-    onUpdate({ content: e.currentTarget.innerText })
+    // Save to state/DB — but don't touch the DOM; browser manages cursor
+    onUpdate({ content: e.currentTarget.textContent })
   }
 
   function handleContentKeyDown(e) {
@@ -136,22 +160,18 @@ function TextElement({ el, isSelected, isTextTool, onSelect, onUpdate, onDelete 
         onPointerCancel={handleHeaderPointerUp}
       />
 
-      {/* Text content */}
+      {/* Text content — NO React children; content managed imperatively via ref */}
       <div
         ref={contentRef}
-        className="tx-content"
-        contentEditable={editing}
+        className={`tx-content ${!el.content && !editing ? 'empty' : ''}`}
+        contentEditable={editing || undefined}
         suppressContentEditableWarning
         style={fontStyle}
         onInput={handleContentInput}
         onKeyDown={handleContentKeyDown}
         onBlur={() => setEditing(false)}
         data-placeholder="Digite aqui..."
-      >
-        {el.content || (!editing && (
-          <span className="tx-placeholder">Digite aqui...</span>
-        ))}
-      </div>
+      />
 
       {/* Delete button (selected) */}
       {isSelected && (

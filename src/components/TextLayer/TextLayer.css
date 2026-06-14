@@ -60,11 +60,13 @@
   cursor: default;
 }
 
-.tx-placeholder {
+/* Placeholder via CSS — avoids colocar filhos React no contenteditable */
+.tx-content.empty::before {
+  content: attr(data-placeholder);
   color: #9CA3AF;
+  font-style: italic;
   pointer-events: none;
   user-select: none;
-  font-style: italic;
 }
 
 /* ── Botão deletar ────────────────────────────────────────────────────────── */
