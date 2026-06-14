@@ -43,6 +43,10 @@ export default function Canvas({
   onGoToPage,
   // Palm rejection: when true, only pen/stylus input is accepted
   pencilOnly,
+  // Zoom
+  zoom,
+  onGesture,
+  onZoomReset,
   // Thumbnail
   onThumbnailGenerated,
   // Exposes current canvas size to parent
@@ -56,6 +60,12 @@ export default function Canvas({
   const [lassoCursor, setLassoCursor] = useState('crosshair')
   const debouncedThumb = useRef(makeDebouncedThumbnail(1500))
   const [pdfLinks, setPdfLinks] = useState([])
+
+  // ── Multi-touch gesture tracking ──────────────────────────────────────────
+  const touchPtrs = useRef(new Map())   // pointerId → {x, y}
+  const lastGesture = useRef(null)      // { dist, cx, cy }
+  const gestureActive = useRef(false)
+  const lastTap = useRef(0)             // timestamp of previous tap (for double-tap)
 
   // drawRef always holds the freshest draw function
   const drawRef = useRef(null)
@@ -187,18 +197,32 @@ export default function Canvas({
 
   // ── Pointer event helpers ──────────────────────────────────────────────────
 
+  // Coords in canvas logical space (accounts for CSS zoom transform on viewport)
   function coords(e) {
     const r = canvasRef.current.getBoundingClientRect()
-    return { x: e.clientX - r.left, y: e.clientY - r.top, p: e.pressure > 0 ? e.pressure : 0.5 }
+    const z = zoom ?? 1
+    return {
+      x: (e.clientX - r.left) / z,
+      y: (e.clientY - r.top) / z,
+      p: e.pressure > 0 ? e.pressure : 0.5,
+    }
   }
 
-  // Returns true if this input should be ignored (palm or filtered by mode)
-  function shouldIgnoreInput(e) {
-    // Large contact area = palm resting on screen — always reject
+  // Returns true if this drawing input should be ignored
+  function shouldIgnoreDrawing(e) {
     if (e.pointerType === 'touch' && (e.width > 40 || e.height > 40)) return true
-    // Pencil-only mode: reject anything that isn't a stylus
     if (pencilOnly && e.pointerType !== 'pen') return true
     return false
+  }
+
+  // Snapshot two active touch pointers for pinch tracking
+  function snapshotGesture() {
+    const pts = Array.from(touchPtrs.current.values()).slice(0, 2)
+    if (pts.length < 2) return
+    const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y)
+    const cx = (pts[0].x + pts[1].x) / 2
+    const cy = (pts[0].y + pts[1].y) / 2
+    lastGesture.current = { dist, cx, cy }
   }
 
   const isDrawingTool = tool === 'pen' || tool === 'brush' || tool === 'highlight' || tool === 'eraser'
@@ -207,17 +231,26 @@ export default function Canvas({
   const isHandTool = tool === 'hand'
 
   function handlePointerDown(e) {
+    // Track all touch pointers for pinch detection (even in pencilOnly mode)
+    if (e.pointerType === 'touch') {
+      touchPtrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (touchPtrs.current.size >= 2) {
+        gestureActive.current = true
+        snapshotGesture()
+        isDown.current = false   // abort any in-progress stroke
+        return
+      }
+    }
+
+    if (gestureActive.current) return
     if (tool === 'text' || isStickerTool || isHandTool) return
-    if (shouldIgnoreInput(e)) return
+    if (shouldIgnoreDrawing(e)) return
+
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch {}
     isDown.current = true
     const { x, y, p } = coords(e)
 
-    if (isLassoTool && lasso) {
-      lasso.pointerDown(x, y)
-      return
-    }
-
+    if (isLassoTool && lasso) { lasso.pointerDown(x, y); return }
     if (isDrawingTool) {
       if (tool === 'eraser') onEraseAt(x, y)
       else onStartStroke(x, y, p)
@@ -225,13 +258,31 @@ export default function Canvas({
   }
 
   function handlePointerMove(e) {
-    if (shouldIgnoreInput(e)) return
+    if (e.pointerType === 'touch') {
+      touchPtrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (touchPtrs.current.size >= 2 && lastGesture.current) {
+        const pts = Array.from(touchPtrs.current.values()).slice(0, 2)
+        const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y)
+        const cx = (pts[0].x + pts[1].x) / 2
+        const cy = (pts[0].y + pts[1].y) / 2
+        onGesture?.({
+          scaleDelta: dist / lastGesture.current.dist,
+          cx, cy,
+          dPanX: cx - lastGesture.current.cx,
+          dPanY: cy - lastGesture.current.cy,
+        })
+        lastGesture.current = { dist, cx, cy }
+        return
+      }
+    }
+
+    if (gestureActive.current) return
+    if (shouldIgnoreDrawing(e)) return
     if (!isDown.current && tool !== 'lasso') return
     const { x, y, p } = coords(e)
 
     if (isLassoTool && lasso) {
       if (isDown.current) lasso.pointerMove(x, y)
-      // Update cursor based on position
       setLassoCursor(lasso.getCursorForPos(x, y))
       return
     }
@@ -244,15 +295,32 @@ export default function Canvas({
   }
 
   function handlePointerUp(e) {
-    if (!isDown.current) return
-    isDown.current = false
-    const { x, y } = coords(e)
-
-    if (isLassoTool && lasso) {
-      lasso.pointerUp(strokes)
-      return
+    if (e.pointerType === 'touch') {
+      touchPtrs.current.delete(e.pointerId)
+      if (touchPtrs.current.size < 2) {
+        if (gestureActive.current) {
+          gestureActive.current = false
+          lastGesture.current = null
+          isDown.current = false
+          return
+        }
+        // Double-tap detection (single touch, no gesture)
+        if (touchPtrs.current.size === 0) {
+          const now = Date.now()
+          if (now - lastTap.current < 320) {
+            onZoomReset?.()
+            lastTap.current = 0
+            return
+          }
+          lastTap.current = now
+        }
+      }
     }
 
+    if (!isDown.current) return
+    isDown.current = false
+
+    if (isLassoTool && lasso) { lasso.pointerUp(strokes); return }
     if (isDrawingTool && tool !== 'eraser') onEndStroke()
     if (tool === 'eraser') onEraseEnd?.()
   }

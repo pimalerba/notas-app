@@ -126,19 +126,40 @@ export default function Library({ onOpenNotebook }) {
   const [modal, setModal] = useState(null) // null | 'notebook' | 'folder' | 'move'
   const [renamingId, setRenamingId] = useState(null)
   const [moveItem, setMoveItem] = useState(null) // { id, type }
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortOrder, setSortOrder] = useState(() => {
+    try { return localStorage.getItem('notas-lib-sort') || 'updated' } catch { return 'updated' }
+  })
   const pdfInputRef = useRef(null)
+
+  function handleSortChange(order) {
+    setSortOrder(order)
+    try { localStorage.setItem('notas-lib-sort', order) } catch {}
+  }
 
   const loading = nbLoading || fdLoading
 
-  // Filtra itens da pasta atual
-  const visibleFolders = folders
-    .filter((f) => (f.parentId ?? null) === currentFolderId)
-    .sort((a, b) => a.name.localeCompare(b.name))
-
-  const visibleNotebooks = notebooks
-    .filter((nb) => (nb.folderId ?? null) === currentFolderId)
-
   const currentFolder = folders.find((f) => f.id === currentFolderId) ?? null
+  const isSearching = searchQuery.trim().length > 0
+  const q = searchQuery.trim().toLowerCase()
+
+  function sortItems(items, nameKey = 'title') {
+    return [...items].sort((a, b) => {
+      if (sortOrder === 'name') return (a[nameKey] || '').localeCompare(b[nameKey] || '')
+      if (sortOrder === 'created') return (b.createdAt || 0) - (a.createdAt || 0)
+      return (b.updatedAt || 0) - (a.updatedAt || 0) // 'updated' default
+    })
+  }
+
+  // In search mode: show all matching items regardless of folder
+  const visibleFolders = isSearching
+    ? sortItems(folders.filter((f) => f.name.toLowerCase().includes(q)), 'name')
+    : sortItems(folders.filter((f) => (f.parentId ?? null) === currentFolderId), 'name')
+
+  const visibleNotebooks = isSearching
+    ? sortItems(notebooks.filter((nb) => nb.title.toLowerCase().includes(q)))
+    : sortItems(notebooks.filter((nb) => (nb.folderId ?? null) === currentFolderId))
+
   const isEmpty = visibleFolders.length === 0 && visibleNotebooks.length === 0
 
   // Contagem de itens por pasta (para o FolderCard)
@@ -203,7 +224,7 @@ export default function Library({ onOpenNotebook }) {
       <header className="library-header">
         <h1 className="library-logo">Notas</h1>
 
-        {currentFolder && (
+        {currentFolder && !isSearching && (
           <div className="library-breadcrumb">
             <button className="breadcrumb-back" onClick={() => setCurrentFolderId(null)}>
               ← Biblioteca
@@ -212,6 +233,38 @@ export default function Library({ onOpenNotebook }) {
             <span className="breadcrumb-current">{currentFolder.name}</span>
           </div>
         )}
+
+        {/* Search bar */}
+        <div className="lib-search-wrap">
+          <svg className="lib-search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <circle cx="6" cy="6" r="4.5"/>
+            <path d="M9.5 9.5l2.5 2.5"/>
+          </svg>
+          <input
+            className="lib-search-input"
+            type="search"
+            placeholder="Buscar..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Buscar cadernos e pastas"
+          />
+          {isSearching && (
+            <button className="lib-search-clear" onClick={() => setSearchQuery('')} aria-label="Limpar busca">✕</button>
+          )}
+        </div>
+
+        {/* Sort order */}
+        <select
+          className="lib-sort-select"
+          value={sortOrder}
+          onChange={(e) => handleSortChange(e.target.value)}
+          aria-label="Ordenar por"
+          title="Ordenar"
+        >
+          <option value="updated">Recentes</option>
+          <option value="created">Criação</option>
+          <option value="name">Nome A→Z</option>
+        </select>
 
         <a
           className="lib-btn lib-btn-ghost"

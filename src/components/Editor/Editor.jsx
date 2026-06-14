@@ -6,6 +6,7 @@ import { useLasso } from '../../hooks/useLasso.js'
 import { useTextElements } from '../../hooks/useTextElements.js'
 import { useStickers } from '../../hooks/useStickers.js'
 import { useStickerInstances } from '../../hooks/useStickerInstances.js'
+import { useZoom } from '../../hooks/useZoom.js'
 import { openPdf } from '../../utils/pdf.js'
 import { exportPageAsPng, exportNotebookAsPdf } from '../../utils/export.js'
 import Canvas from '../Canvas/Canvas.jsx'
@@ -101,6 +102,17 @@ export default function Editor({ notebookId, onBack }) {
   const [armedSticker, setArmedSticker] = useState(null) // sticker definition ready to place
   const [showStickerPanel, setShowStickerPanel] = useState(false)
   const [pencilOnly, setPencilOnly] = useState(false)
+
+  const { zoom, panX, panY, containerRef, applyGesture, resetZoom, screenToCanvas } = useZoom()
+  const [showZoomBadge, setShowZoomBadge] = useState(false)
+  const zoomBadgeTimer = useRef(null)
+  useEffect(() => {
+    if (zoom === 1) { setShowZoomBadge(false); return }
+    setShowZoomBadge(true)
+    clearTimeout(zoomBadgeTimer.current)
+    zoomBadgeTimer.current = setTimeout(() => setShowZoomBadge(false), 2000)
+    return () => clearTimeout(zoomBadgeTimer.current)
+  }, [zoom])
 
   const canvasSizeRef = useRef({ width: 1280, height: 900 })
   const [toast, setToast] = useState(null)
@@ -213,7 +225,7 @@ export default function Editor({ notebookId, onBack }) {
         onDeletePage={removePage}
         onReorderPages={reorderPages}
       />
-      <div className="editor-main">
+      <div className="editor-main" ref={containerRef}>
         <Toolbar
           tool={tool}
           color={color}
@@ -241,7 +253,15 @@ export default function Editor({ notebookId, onBack }) {
           onRedo={redo}
           pencilOnly={pencilOnly}
           onTogglePencilOnly={() => setPencilOnly((v) => !v)}
+          zoom={zoom}
+          onZoomReset={resetZoom}
         />
+
+        {/* Viewport: all drawing layers scale and pan together */}
+        <div
+          className="editor-viewport"
+          style={{ transform: `translate(${panX}px,${panY}px) scale(${zoom})` }}
+        >
         <Canvas
           paperType={notebook?.paperType ?? 'blank'}
           strokes={strokes}
@@ -259,6 +279,9 @@ export default function Editor({ notebookId, onBack }) {
           sizeRef={canvasSizeRef}
           pencilOnly={pencilOnly}
           onGoToPage={handleGoToPage}
+          zoom={zoom}
+          onGesture={applyGesture}
+          onZoomReset={resetZoom}
         />
         <TextLayer
           texts={texts}
@@ -268,6 +291,7 @@ export default function Editor({ notebookId, onBack }) {
           onSelectText={setSelectedTextId}
           onUpdateText={updateText}
           onDeleteText={removeText}
+          screenToCanvas={screenToCanvas}
         />
         <StickerLayer
           instances={stickerInstances}
@@ -283,7 +307,10 @@ export default function Editor({ notebookId, onBack }) {
           onSelect={setSelectedStickerId}
           onUpdate={updateStickerInstance}
           onDelete={removeStickerInstance}
+          screenToCanvas={screenToCanvas}
         />
+        </div>{/* end editor-viewport */}
+
         {showStickerPanel && (
           <StickerPanel
             stickers={stickers}
@@ -292,6 +319,13 @@ export default function Editor({ notebookId, onBack }) {
             onRemove={removeSticker}
             onClose={() => setShowStickerPanel(false)}
           />
+        )}
+
+        {/* Zoom level badge — appears on zoom change, hides after 2s */}
+        {showZoomBadge && (
+          <div className="zoom-badge" role="status" aria-live="polite">
+            {Math.round(zoom * 100)}%
+          </div>
         )}
 
         {/* PDF loading overlay */}

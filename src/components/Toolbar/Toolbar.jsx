@@ -222,6 +222,9 @@ export default function Toolbar({
   // Palm rejection
   pencilOnly,
   onTogglePencilOnly,
+  // Zoom
+  zoom,
+  onZoomReset,
 }) {
   const toolbarRef = useRef(null)
   const [pos, setPos] = useState(() => {
@@ -419,6 +422,20 @@ export default function Toolbar({
       >
         <PencilOnlyIcon active={pencilOnly} />
       </button>
+
+      {/* Zoom reset — only visible when zoom != 1 */}
+      {zoom != null && zoom !== 1 && (
+        <button
+          className="tb-btn tb-zoom-reset"
+          onClick={onZoomReset}
+          title="Resetar zoom (duplo toque no canvas)"
+          aria-label={`Zoom ${Math.round(zoom * 100)}% — clique para resetar`}
+        >
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '-0.5px' }}>
+            {Math.round(zoom * 100)}%
+          </span>
+        </button>
+      )}
 
       <div className="tb-sep" />
 

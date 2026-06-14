@@ -3,7 +3,7 @@ import './StickerLayer.css'
 
 const MIN_SIZE = 32
 
-function StickerInstance({ inst, isSelected, onSelect, onUpdate, onDelete }) {
+function StickerInstance({ inst, isSelected, screenToCanvas, onSelect, onUpdate, onDelete }) {
   const [dragging, setDragging] = useState(false)
   const [resizing, setResizing] = useState(null)
   const dragStart = useRef(null)
@@ -15,13 +15,15 @@ function StickerInstance({ inst, isSelected, onSelect, onUpdate, onDelete }) {
     e.stopPropagation()
     onSelect()
     setDragging(true)
-    dragStart.current = { x: e.clientX - inst.x, y: e.clientY - inst.y }
+    const pos = screenToCanvas(e.clientX, e.clientY)
+    dragStart.current = { x: pos.x - inst.x, y: pos.y - inst.y }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
   function handlePointerMove(e) {
     if (dragging && dragStart.current) {
-      onUpdate({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y })
+      const pos = screenToCanvas(e.clientX, e.clientY)
+      onUpdate({ x: pos.x - dragStart.current.x, y: pos.y - dragStart.current.y })
     }
   }
 
@@ -35,14 +37,16 @@ function StickerInstance({ inst, isSelected, onSelect, onUpdate, onDelete }) {
   function handleResizeDown(e, handle) {
     e.stopPropagation()
     setResizing(handle)
-    dragStart.current = { x: e.clientX, y: e.clientY, w: inst.width, h: inst.height, ix: inst.x, iy: inst.y }
+    const pos = screenToCanvas(e.clientX, e.clientY)
+    dragStart.current = { x: pos.x, y: pos.y, w: inst.width, h: inst.height, ix: inst.x, iy: inst.y }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
   function handleResizeMove(e) {
     if (!resizing || !dragStart.current) return
-    const dx = e.clientX - dragStart.current.x
-    const dy = e.clientY - dragStart.current.y
+    const pos = screenToCanvas(e.clientX, e.clientY)
+    const dx = pos.x - dragStart.current.x
+    const dy = pos.y - dragStart.current.y
     const { w, h, ix, iy } = dragStart.current
     const ratio = w / h
     const changes = {}
@@ -121,18 +125,20 @@ export default function StickerLayer({
   selectedId,
   tool,
   armedSticker,
+  screenToCanvas,
   onPlace,
   onSelect,
   onUpdate,
   onDelete,
 }) {
   const isStickerTool = tool === 'sticker'
+  const toCanvas = screenToCanvas ?? ((x, y) => ({ x, y }))
 
   function handleLayerPointerDown(e) {
     if (!isStickerTool || !armedSticker) return
     if (e.target !== e.currentTarget) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    onPlace(armedSticker, e.clientX - rect.left, e.clientY - rect.top)
+    const pos = toCanvas(e.clientX, e.clientY)
+    onPlace(armedSticker, pos.x, pos.y)
   }
 
   function handleLayerClick(e) {
@@ -151,6 +157,7 @@ export default function StickerLayer({
           key={inst.id}
           inst={inst}
           isSelected={inst.id === selectedId}
+          screenToCanvas={toCanvas}
           onSelect={() => onSelect(inst.id)}
           onUpdate={(changes) => onUpdate(inst.id, changes)}
           onDelete={() => onDelete(inst.id)}

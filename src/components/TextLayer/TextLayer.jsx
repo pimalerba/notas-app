@@ -11,7 +11,7 @@ const MIN_W = 80
 const MIN_H = 32
 const HANDLE_SIZE = 8
 
-function TextElement({ el, isSelected, isTextTool, onSelect, onUpdate, onDelete }) {
+function TextElement({ el, isSelected, isTextTool, screenToCanvas, onSelect, onUpdate, onDelete }) {
   const [editing, setEditing] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [resizing, setResizing] = useState(null) // 'se' | 'sw' | etc.
@@ -61,13 +61,15 @@ function TextElement({ el, isSelected, isTextTool, onSelect, onUpdate, onDelete 
     e.stopPropagation()
     onSelect()
     setDragging(true)
-    dragStart.current = { x: e.clientX - el.x, y: e.clientY - el.y }
+    const pos = screenToCanvas(e.clientX, e.clientY)
+    dragStart.current = { x: pos.x - el.x, y: pos.y - el.y }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
   function handleHeaderPointerMove(e) {
     if (!dragging || !dragStart.current) return
-    onUpdate({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y })
+    const pos = screenToCanvas(e.clientX, e.clientY)
+    onUpdate({ x: pos.x - dragStart.current.x, y: pos.y - dragStart.current.y })
   }
 
   function handleHeaderPointerUp() {
@@ -80,14 +82,16 @@ function TextElement({ el, isSelected, isTextTool, onSelect, onUpdate, onDelete 
   function handleResizePointerDown(e, handle) {
     e.stopPropagation()
     setResizing(handle)
-    dragStart.current = { x: e.clientX, y: e.clientY, w: el.width, h: el.height }
+    const pos = screenToCanvas(e.clientX, e.clientY)
+    dragStart.current = { x: pos.x, y: pos.y, w: el.width, h: el.height }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
   function handleResizePointerMove(e) {
     if (!resizing || !dragStart.current) return
-    const dx = e.clientX - dragStart.current.x
-    const dy = e.clientY - dragStart.current.y
+    const pos = screenToCanvas(e.clientX, e.clientY)
+    const dx = pos.x - dragStart.current.x
+    const dy = pos.y - dragStart.current.y
     const changes = {}
     if (resizing.includes('e')) changes.width = Math.max(MIN_W, dragStart.current.w + dx)
     if (resizing.includes('s')) changes.height = Math.max(MIN_H, dragStart.current.h + dy)
@@ -192,18 +196,20 @@ export default function TextLayer({
   texts,
   selectedTextId,
   tool,
+  screenToCanvas,
   onCreateText,
   onSelectText,
   onUpdateText,
   onDeleteText,
 }) {
   const isTextTool = tool === 'text'
+  const toCanvas = screenToCanvas ?? ((x, y) => ({ x, y }))
 
   function handleLayerPointerDown(e) {
     if (!isTextTool) return
     if (e.target !== e.currentTarget) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    onCreateText(e.clientX - rect.left, e.clientY - rect.top)
+    const pos = toCanvas(e.clientX, e.clientY)
+    onCreateText(pos.x, pos.y)
   }
 
   function handleLayerClick(e) {
@@ -227,6 +233,7 @@ export default function TextLayer({
           el={el}
           isSelected={el.id === selectedTextId}
           isTextTool={isTextTool}
+          screenToCanvas={toCanvas}
           onSelect={() => onSelectText(el.id)}
           onUpdate={(changes) => onUpdateText(el.id, changes)}
           onDelete={() => onDeleteText(el.id)}
