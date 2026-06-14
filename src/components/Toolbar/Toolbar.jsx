@@ -133,6 +133,9 @@ export default function Toolbar({
   // Sticker panel toggle
   stickerPanelOpen,
   onToggleStickerPanel,
+  // Selected sticker instance
+  selectedSticker,
+  onDeleteSelectedSticker,
 }) {
   const toolbarRef = useRef(null)
   const [pos, setPos] = useState({ x: 0, y: 20 })
@@ -184,6 +187,7 @@ export default function Toolbar({
   const showTextFormat = isText && selectedText
   // Show minimal delete bar when text selected but another tool is active
   const showTextDeleteOnly = selectedText && !isText
+  const showStickerDelete = !!selectedSticker
   const showLassoSection = isLasso
   const showEraserModes = isEraser
   const showColors = !isEraser && !isLasso && !isText && !showTextFormat
@@ -261,6 +265,19 @@ export default function Toolbar({
           >
             <TrashIcon />
             <span>Deletar texto</span>
+          </button>
+        </div>
+      )}
+
+      {showStickerDelete && (
+        <div className="tb-lasso-section">
+          <button
+            className="tb-action-btn"
+            onClick={onDeleteSelectedSticker}
+            title="Deletar adesivo"
+          >
+            <TrashIcon />
+            <span>Deletar adesivo</span>
           </button>
         </div>
       )}

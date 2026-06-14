@@ -89,6 +89,7 @@ export default function Editor({ notebookId, onBack }) {
   const {
     instances: stickerInstances,
     selectedId: selectedStickerId,
+    selectedInstance: selectedStickerInstance,
     setSelectedId: setSelectedStickerId,
     placeSticker,
     updateInstance: updateStickerInstance,
@@ -160,6 +161,8 @@ export default function Editor({ notebookId, onBack }) {
           onDeleteSelectedText={() => selectedTextId && removeText(selectedTextId)}
           stickerPanelOpen={showStickerPanel}
           onToggleStickerPanel={() => setShowStickerPanel((v) => !v)}
+          selectedSticker={selectedStickerInstance}
+          onDeleteSelectedSticker={() => selectedStickerId && removeStickerInstance(selectedStickerId)}
         />
         <Canvas
           paperType={notebook?.paperType ?? 'blank'}
