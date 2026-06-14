@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect } from 'react'
+import { useState, useRef, useLayoutEffect, useEffect } from 'react'
 import './Toolbar.css'
 
 const PEN_COLORS = [
@@ -105,6 +105,15 @@ function TrashIcon() {
   )
 }
 
+function ExportIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 2v8M5 7l3 3 3-3" />
+      <path d="M3 11v2h10v-2" />
+    </svg>
+  )
+}
+
 function StickerIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -136,11 +145,35 @@ export default function Toolbar({
   // Selected sticker instance
   selectedSticker,
   onDeleteSelectedSticker,
+  // Export
+  onExportPng,
+  onExportPdf,
 }) {
   const toolbarRef = useRef(null)
   const [pos, setPos] = useState({ x: 0, y: 20 })
   const isDragging = useRef(false)
   const drag = useRef({ mx: 0, my: 0, tx: 0, ty: 0 })
+
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const exportBtnRef = useRef(null)
+  const [exportMenuPos, setExportMenuPos] = useState({ top: 0, left: 0 })
+
+  useEffect(() => {
+    if (!showExportMenu) return
+    function handleOutside(e) {
+      if (!exportBtnRef.current?.contains(e.target)) setShowExportMenu(false)
+    }
+    setTimeout(() => document.addEventListener('mousedown', handleOutside), 50)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [showExportMenu])
+
+  function toggleExportMenu() {
+    if (!showExportMenu && exportBtnRef.current) {
+      const r = exportBtnRef.current.getBoundingClientRect()
+      setExportMenuPos({ top: r.bottom + 6, left: r.left })
+    }
+    setShowExportMenu((v) => !v)
+  }
 
   useLayoutEffect(() => {
     const el = toolbarRef.current
@@ -194,6 +227,7 @@ export default function Toolbar({
   const showSizes = !isEraser && !isLasso && !isText
 
   return (
+    <>
     <div
       ref={toolbarRef}
       className="toolbar"
@@ -211,6 +245,16 @@ export default function Toolbar({
       {/* Back */}
       <button className="tb-btn" onClick={onBack} title="Voltar à biblioteca">
         <BackIcon />
+      </button>
+
+      {/* Export */}
+      <button
+        ref={exportBtnRef}
+        className={`tb-btn ${showExportMenu ? 'active' : ''}`}
+        onClick={toggleExportMenu}
+        title="Exportar"
+      >
+        <ExportIcon />
       </button>
 
       <div className="tb-sep" />
@@ -388,5 +432,28 @@ export default function Toolbar({
         </>
       )}
     </div>
+
+    {showExportMenu && (
+      <div
+        className="tb-export-menu"
+        style={{ top: exportMenuPos.top, left: exportMenuPos.left }}
+      >
+        <button
+          className="tb-export-item"
+          onClick={() => { setShowExportMenu(false); onExportPng?.() }}
+        >
+          <ExportIcon />
+          <span>Página como PNG</span>
+        </button>
+        <button
+          className="tb-export-item"
+          onClick={() => { setShowExportMenu(false); onExportPdf?.() }}
+        >
+          <ExportIcon />
+          <span>Caderno inteiro como PDF</span>
+        </button>
+      </div>
+    )}
+    </>
   )
 }

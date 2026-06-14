@@ -40,6 +40,8 @@ export default function Canvas({
   onEraseAt,
   // Thumbnail
   onThumbnailGenerated,
+  // Exposes current canvas size to parent
+  sizeRef,
 }) {
   const wrapRef = useRef(null)
   const canvasRef = useRef(null)
@@ -142,6 +144,7 @@ export default function Canvas({
       const pdfCanvas = pdfCanvasRef.current
       if (pdfCanvas) { pdfCanvas.width = w; pdfCanvas.height = h }
 
+      if (sizeRef) sizeRef.current = { width: w, height: h }
       setCanvasSize({ width: w, height: h })
       drawRef.current?.()
     })

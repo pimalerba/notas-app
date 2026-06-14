@@ -7,6 +7,7 @@ import { useTextElements } from '../../hooks/useTextElements.js'
 import { useStickers } from '../../hooks/useStickers.js'
 import { useStickerInstances } from '../../hooks/useStickerInstances.js'
 import { openPdf } from '../../utils/pdf.js'
+import { exportPageAsPng, exportNotebookAsPdf } from '../../utils/export.js'
 import Canvas from '../Canvas/Canvas.jsx'
 import Toolbar from '../Toolbar/Toolbar.jsx'
 import PagePanel from '../PagePanel/PagePanel.jsx'
@@ -99,9 +100,40 @@ export default function Editor({ notebookId, onBack }) {
   const [armedSticker, setArmedSticker] = useState(null) // sticker definition ready to place
   const [showStickerPanel, setShowStickerPanel] = useState(false)
 
+  const canvasSizeRef = useRef({ width: 1280, height: 900 })
+
   function handleStickerSelect(sticker) {
     setArmedSticker(sticker)
     setTool('sticker')
+  }
+
+  async function handleExportPng() {
+    if (!activePage) return
+    const { width, height } = canvasSizeRef.current
+    await exportPageAsPng({
+      page: activePage,
+      strokes,
+      texts,
+      stickerInstances,
+      pdfDoc,
+      paperType: notebook?.paperType ?? 'blank',
+      width,
+      height,
+      notebookName: notebook?.name ?? 'notas',
+    })
+  }
+
+  async function handleExportPdf() {
+    if (!notebook) return
+    const { width, height } = canvasSizeRef.current
+    await exportNotebookAsPdf({
+      notebook,
+      pages,
+      pdfDoc,
+      paperType: notebook?.paperType ?? 'blank',
+      width,
+      height,
+    })
   }
 
   // Delete key handler
@@ -163,6 +195,8 @@ export default function Editor({ notebookId, onBack }) {
           onToggleStickerPanel={() => setShowStickerPanel((v) => !v)}
           selectedSticker={selectedStickerInstance}
           onDeleteSelectedSticker={() => selectedStickerId && removeStickerInstance(selectedStickerId)}
+          onExportPng={handleExportPng}
+          onExportPdf={handleExportPdf}
         />
         <Canvas
           paperType={notebook?.paperType ?? 'blank'}
@@ -177,6 +211,7 @@ export default function Editor({ notebookId, onBack }) {
           onEndStroke={endStroke}
           onEraseAt={eraseAt}
           onThumbnailGenerated={handleThumbnailGenerated}
+          sizeRef={canvasSizeRef}
         />
         <TextLayer
           texts={texts}
