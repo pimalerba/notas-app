@@ -1,16 +1,154 @@
-# React + Vite
+# Notas ✦
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> A GoodNotes-inspired digital notebook for iPad and desktop — built entirely with React, no native code required.
 
-Currently, two official plugins are available:
+[![Live Demo](https://img.shields.io/badge/live%20demo-notas--app.vercel.app-4d94e0?style=flat-square&logo=vercel&logoColor=white)](https://notas-app-mu.vercel.app)
+[![PWA Ready](https://img.shields.io/badge/PWA-ready-5cb85c?style=flat-square)](https://notas-app-mu.vercel.app)
+[![React 19](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-8-646cff?style=flat-square&logo=vite&logoColor=white)](https://vite.dev)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## ✨ Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### ✏️ Drawing & Annotation
+- **Pen** — pressure-sensitive ink powered by `perfect-freehand`
+- **Calligraphic brush** — variable-width strokes that react to drawing speed
+- **Highlighter** — semi-transparent marker with multiply blending
+- **Selective eraser** — erase full strokes or highlights only
+- **Lasso selection** — draw a free selection, then move, resize, or delete
+- **Palm rejection** — always filters large-contact palm touches; optional pencil-only mode blocks all finger input
 
-## Expanding the ESLint configuration
+### 📄 PDF Import & Annotation
+- Import any PDF — pages stored in IndexedDB, works fully offline
+- Cover thumbnail generated from page 1 and cached in the database
+- Draw, highlight, and add text on top of every PDF page
+- **Hand tool** — disables drawing so you can tap PDF internal links (perfect for planners with navigation)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 📝 Text & Stickers
+- Rich text boxes with font family, size, bold, italic, and six colors
+- Drag and reposition text elements freely on the canvas
+- Custom sticker library — import any PNG/SVG as a reusable stamp
+- Place, resize, and delete sticker instances per page
+
+### 📚 Library & Organization
+- Create notebooks with custom cover colors and paper styles (blank, lined, grid, dot)
+- Organize notebooks into folders with drag-and-drop reordering
+- Rename, move, and delete with confirmation dialogs
+
+### 🗂️ Page Management
+- Unlimited pages per notebook
+- Live thumbnails in the collapsible side panel
+- Duplicate, delete, and drag-to-reorder pages
+
+### ↩️ Undo / Redo
+- Command-based history covering strokes, eraser gestures, lasso operations, and text
+- `⌘Z` / `⌘⇧Z` keyboard shortcuts (also `Ctrl+Z` / `Ctrl+Y`)
+- Toolbar buttons with correct disabled state
+
+### 💾 Export
+- **PNG** — composites all layers (PDF background, ink, text, stickers) into a single image
+- **PDF** — exports the full notebook as a PDF with all annotations baked in
+
+### 🎨 Toolbar
+- Floating, draggable — place it anywhere on screen
+- Toggle between **horizontal** and **vertical** orientation with a single button
+- Position and orientation persist across sessions via `localStorage`
+
+### 📲 PWA / Offline
+- Installable on iPad via Safari — feels like a native app on the home screen
+- Service Worker (Workbox) caches everything; PDF worker cached separately so install stays lean
+
+---
+
+## 🛠 Stack
+
+| | Technology |
+|---|---|
+| UI | [React 19](https://react.dev) |
+| Build | [Vite 8](https://vite.dev) |
+| Ink rendering | [perfect-freehand](https://github.com/steveruizok/perfect-freehand) |
+| PDF rendering | [pdfjs-dist 4](https://mozilla.github.io/pdf.js/) |
+| PDF export | [jsPDF 4](https://github.com/parallax/jsPDF) |
+| Storage | [IndexedDB via idb](https://github.com/jakearchibald/idb) |
+| PWA / SW | [vite-plugin-pwa](https://vite-pwa-org.netlify.app) + Workbox |
+| Hosting | [Vercel](https://vercel.com) |
+
+No UI library. Every component is hand-rolled with CSS custom properties.
+
+---
+
+## 🚀 Running Locally
+
+```bash
+git clone https://github.com/pimalerba/notas-app.git
+cd notas-app
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173).
+
+> **iPad tip:** open the local dev server address in Safari on your iPad — Apple Pencil input (`pointerType: "pen"`) works out of the box.
+
+---
+
+## 📦 Production Build
+
+```bash
+npm run build     # outputs to dist/
+npm run preview   # preview locally before deploying
+```
+
+---
+
+## ☁️ Deploy to Vercel
+
+1. Push your fork to GitHub
+2. [Import the repo on Vercel](https://vercel.com/new) — Vite is detected automatically
+3. Click **Deploy**
+
+No environment variables required.
+
+Or via CLI:
+
+```bash
+npm i -g vercel && vercel
+```
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── components/
+│   ├── Canvas/        # Drawing surface, PDF background, annotation link overlay
+│   ├── Editor/        # Main editor shell — orchestrates all hooks and layers
+│   ├── Library/       # Notebook grid, folder system, cover thumbnails
+│   ├── PagePanel/     # Collapsible side panel with page thumbnails
+│   ├── StickerLayer/  # Sticker placement and manipulation
+│   ├── StickerPanel/  # Sticker library UI
+│   ├── TextLayer/     # Rich text element layer
+│   ├── Toolbar/       # Floating toolbar — tools, colors, sizes, export
+│   └── ui/            # Shared components (ConfirmDialog)
+├── db/index.js        # IndexedDB schema (v4) and CRUD helpers
+├── hooks/             # useDrawing · useLasso · usePages · useNotebooks · …
+└── utils/             # drawing · export · lasso · pdf · thumbnail
+```
+
+---
+
+## 🗺 Roadmap
+
+- [ ] Pinch-to-zoom canvas
+- [ ] Search across all notebooks
+- [ ] Cloud sync (iCloud / Google Drive)
+- [ ] Shapes tool (rectangle, circle, arrow)
+- [ ] Dark mode
+
+---
+
+## License
+
+MIT
