@@ -12,3 +12,60 @@
   overflow: hidden;
   background: var(--bg-canvas);
 }
+
+/* ── PDF loading overlay ─────────────────────────────────────────────────── */
+
+.editor-pdf-loading {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+}
+
+.pdf-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--blue-400);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Toast ───────────────────────────────────────────────────────────────── */
+
+.editor-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  background: var(--gray-700);
+  color: white;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  padding: 10px 22px;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: toastIn 200ms var(--ease-out) both;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

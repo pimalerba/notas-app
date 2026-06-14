@@ -101,6 +101,14 @@ export default function Editor({ notebookId, onBack }) {
   const [showStickerPanel, setShowStickerPanel] = useState(false)
 
   const canvasSizeRef = useRef({ width: 1280, height: 900 })
+  const [toast, setToast] = useState(null)
+  const toastTimer = useRef(null)
+
+  function showToast(msg) {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setToast(msg)
+    toastTimer.current = setTimeout(() => setToast(null), 2500)
+  }
 
   function handleStickerSelect(sticker) {
     setArmedSticker(sticker)
@@ -121,6 +129,7 @@ export default function Editor({ notebookId, onBack }) {
       height,
       notebookName: notebook?.name ?? 'notas',
     })
+    showToast('Página exportada como PNG ✓')
   }
 
   async function handleExportPdf() {
@@ -134,6 +143,7 @@ export default function Editor({ notebookId, onBack }) {
       width,
       height,
     })
+    showToast('Caderno exportado como PDF ✓')
   }
 
   // Delete key handler
@@ -245,6 +255,21 @@ export default function Editor({ notebookId, onBack }) {
             onRemove={removeSticker}
             onClose={() => setShowStickerPanel(false)}
           />
+        )}
+
+        {/* PDF loading overlay */}
+        {notebook?.type === 'pdf' && !pdfDoc && (
+          <div className="editor-pdf-loading" role="status" aria-live="polite">
+            <div className="pdf-spinner" />
+            <span>Carregando PDF…</span>
+          </div>
+        )}
+
+        {/* Toast notification */}
+        {toast && (
+          <div className="editor-toast" role="status" aria-live="polite">
+            {toast}
+          </div>
         )}
       </div>
     </div>

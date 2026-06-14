@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import ConfirmDialog from '../ui/ConfirmDialog.jsx'
 import './NotebookCover.css'
 
 const RING_COUNT = 8
@@ -38,6 +39,7 @@ export default function NotebookCover({
   onRenameCancel,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [draft, setDraft] = useState(notebook.title)
   const inputRef = useRef(null)
 
@@ -70,6 +72,7 @@ export default function NotebookCover({
   const isPdf = notebook.type === 'pdf'
 
   return (
+    <>
     <div className="nb-card" onClick={onOpen}>
       <div className="nb-spiral-wrap">
         <Spiral />
@@ -121,12 +124,23 @@ export default function NotebookCover({
           </button>
           <button
             className="nb-dropdown-danger"
-            onClick={() => { setMenuOpen(false); onDelete() }}
+            onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}
           >
             Excluir
           </button>
         </div>
       )}
     </div>
+
+    {confirmDelete && (
+      <ConfirmDialog
+        title="Excluir caderno?"
+        message={`"${notebook.title}" e todas as suas páginas serão excluídos permanentemente.`}
+        confirmLabel="Excluir"
+        onConfirm={() => { setConfirmDelete(false); onDelete() }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    )}
+    </>
   )
 }

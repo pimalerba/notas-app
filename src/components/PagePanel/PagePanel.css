@@ -8,6 +8,54 @@
   border-right: 1px solid var(--border-subtle);
   overflow: hidden;
   z-index: var(--z-raised);
+  position: relative;
+  transition: width var(--duration-normal) var(--ease-out);
+}
+
+/* ── Toggle colapsável (mobile) ──────────────────────────────────────────── */
+
+.pp-toggle {
+  display: none;
+  position: absolute;
+  right: -22px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 44px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-subtle);
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--gray-500);
+  font-size: 13px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  z-index: calc(var(--z-raised) + 1);
+  box-shadow: 2px 0 4px rgba(0,0,0,0.06);
+}
+
+.pp-toggle:hover {
+  color: var(--text-primary);
+  background: var(--gray-100);
+}
+
+.page-panel.collapsed {
+  width: 0;
+  border-right: none;
+  overflow: visible;
+}
+
+.page-panel.collapsed .pp-list,
+.page-panel.collapsed .pp-add {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 639px) {
+  .pp-toggle {
+    display: flex;
+  }
 }
 
 /* ── Lista de páginas ────────────────────────────────────────────────────── */
@@ -182,3 +230,6 @@
 }
 
 .pp-menu button.disabled:hover { background: none; }
+
+.pp-menu button.danger { color: #dc2626; }
+.pp-menu button.danger:hover { background: #fef2f2; }

@@ -84,9 +84,25 @@ function MoveModal({ folders, onMove, onClose }) {
 function EmptyState({ onCreateNotebook }) {
   return (
     <div className="library-empty">
-      <div className="library-empty-icon">📓</div>
+      <svg className="library-empty-illo" viewBox="0 0 140 120" fill="none" aria-hidden="true">
+        {/* página de fundo */}
+        <rect x="32" y="28" width="76" height="84" rx="6" fill="#dce5f0"/>
+        {/* capa do caderno */}
+        <rect x="24" y="20" width="76" height="84" rx="6" fill="#4d94e0"/>
+        {/* textura de linhas */}
+        <line x1="36" y1="52" x2="88" y2="52" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="36" y1="63" x2="80" y2="63" stroke="rgba(255,255,255,0.28)" strokeWidth="2" strokeLinecap="round"/>
+        <line x1="36" y1="74" x2="84" y2="74" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"/>
+        {/* espiral no topo */}
+        {[34,46,58,70,82,94].map((cx) => (
+          <ellipse key={cx} cx={cx} cy={22} rx={5} ry={6} fill="none" stroke="#7db3ec" strokeWidth="2"/>
+        ))}
+        {/* círculo de ação */}
+        <circle cx="104" cy="86" r="20" fill="#7db3ec"/>
+        <path d="M104 78v16M96 86h16" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+      </svg>
       <h3>Nenhum caderno ainda</h3>
-      <p>Crie seu primeiro caderno para começar</p>
+      <p>Crie seu primeiro caderno para começar a escrever</p>
       <button className="btn-primary" onClick={onCreateNotebook}>
         + Novo caderno
       </button>

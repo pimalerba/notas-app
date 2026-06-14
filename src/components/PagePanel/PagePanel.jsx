@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import ConfirmDialog from '../ui/ConfirmDialog.jsx'
 import './PagePanel.css'
 
 export default function PagePanel({
@@ -13,6 +14,8 @@ export default function PagePanel({
   const [dragIndex, setDragIndex] = useState(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
   const [menu, setMenu] = useState(null) // { pageId, x, y }
+  const [confirmDeletePageId, setConfirmDeletePageId] = useState(null)
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 640)
   const menuRef = useRef(null)
 
   useEffect(() => {
@@ -59,8 +62,20 @@ export default function PagePanel({
 
   const canDelete = pages.length > 1
 
+  const pageToDelete = confirmDeletePageId ? pages.find((p) => p.id === confirmDeletePageId) : null
+  const pageToDeleteIndex = pageToDelete ? pages.indexOf(pageToDelete) + 1 : 0
+
   return (
-    <aside className="page-panel">
+    <aside className={`page-panel ${collapsed ? 'collapsed' : ''}`}>
+      <button
+        className="pp-toggle"
+        onClick={() => setCollapsed((v) => !v)}
+        title={collapsed ? 'Mostrar páginas' : 'Ocultar páginas'}
+        aria-label={collapsed ? 'Mostrar painel de páginas' : 'Ocultar painel de páginas'}
+        aria-expanded={!collapsed}
+      >
+        {collapsed ? '›' : '‹'}
+      </button>
       <div className="pp-list">
         {pages.map((page, i) => {
           const isActive = page.id === activePageId
@@ -106,6 +121,16 @@ export default function PagePanel({
         <PlusIcon />
       </button>
 
+      {confirmDeletePageId && (
+        <ConfirmDialog
+          title="Deletar página?"
+          message={`A página ${pageToDeleteIndex} será excluída permanentemente.`}
+          confirmLabel="Deletar"
+          onConfirm={() => { onDeletePage(confirmDeletePageId); setConfirmDeletePageId(null) }}
+          onCancel={() => setConfirmDeletePageId(null)}
+        />
+      )}
+
       {menu && (
         <div
           ref={menuRef}
@@ -116,10 +141,10 @@ export default function PagePanel({
             Duplicar
           </button>
           <button
-            className={canDelete ? '' : 'disabled'}
+            className={canDelete ? 'danger' : 'disabled'}
             onClick={() => {
               if (!canDelete) return
-              onDeletePage(menu.pageId)
+              setConfirmDeletePageId(menu.pageId)
               setMenu(null)
             }}
           >
