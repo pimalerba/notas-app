@@ -144,6 +144,33 @@ function StickerIcon() {
   )
 }
 
+function HandIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 8V3.5a1 1 0 0 1 2 0V8" />
+      <path d="M8 7V3a1 1 0 0 1 2 0v4" />
+      <path d="M10 5.5a1 1 0 0 1 2 0v3.5a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8a1 1 0 0 1 2 0" />
+      <path d="M4 8V6.5a1 1 0 0 1 2 0V8" />
+    </svg>
+  )
+}
+
+function PencilOnlyIcon({ active }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11.5 2.5l2 2-7.5 7.5H4v-2l7.5-7.5z" />
+      <path d="M10 4l2 2" />
+      {active
+        ? <path d="M1 13h6" strokeWidth="2" />
+        : <>
+            <path d="M4 10.5c1 1 2.5 1.5 4.5 0" />
+            <path d="M3 13c.5-1 1.5-1.5 2.5-1.5S7.5 12 8 13" />
+          </>
+      }
+    </svg>
+  )
+}
+
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function Toolbar({
@@ -171,6 +198,9 @@ export default function Toolbar({
   canRedo,
   onUndo,
   onRedo,
+  // Palm rejection
+  pencilOnly,
+  onTogglePencilOnly,
 }) {
   const toolbarRef = useRef(null)
   const [pos, setPos] = useState({ x: 0, y: 20 })
@@ -244,6 +274,7 @@ export default function Toolbar({
   const isEraser    = tool === 'eraser'
   const isLasso     = tool === 'lasso'
   const isText      = tool === 'text'
+  const isHand      = tool === 'hand'
   const colors      = isHighlight ? HIGHLIGHT_COLORS : PEN_COLORS
   const sizes       = isHighlight ? HIGHLIGHT_SIZES  : PEN_SIZES
 
@@ -254,8 +285,8 @@ export default function Toolbar({
   const showStickerDelete = !!selectedSticker
   const showLassoSection = isLasso
   const showEraserModes = isEraser
-  const showColors = !isEraser && !isLasso && !isText && !showTextFormat
-  const showSizes = !isEraser && !isLasso && !isText
+  const showColors = !isEraser && !isLasso && !isText && !isHand && !showTextFormat
+  const showSizes = !isEraser && !isLasso && !isText && !isHand
 
   return (
     <>
@@ -318,6 +349,19 @@ export default function Toolbar({
       <button className={`tb-btn ${tool === 'lasso'     ? 'active' : ''}`} onClick={() => pickTool('lasso')}         title="Lasso">               <LassoIcon />     </button>
       <button className={`tb-btn ${tool === 'text'      ? 'active' : ''}`} onClick={() => pickTool('text')}          title="Caixa de texto">      <TextIcon />      </button>
       <button className={`tb-btn ${stickerPanelOpen || tool === 'sticker' ? 'active' : ''}`} onClick={onToggleStickerPanel} title="Adesivos"><StickerIcon /></button>
+      <button className={`tb-btn ${tool === 'hand'      ? 'active' : ''}`} onClick={() => pickTool('hand')}          title="Modo dedo — rolar e clicar links do PDF"><HandIcon /></button>
+
+      <div className="tb-sep" />
+
+      {/* Palm rejection toggle */}
+      <button
+        className={`tb-btn ${pencilOnly ? 'active' : ''}`}
+        onClick={onTogglePencilOnly}
+        title={pencilOnly ? 'Modo: só Apple Pencil (toque ignorado)' : 'Modo: dedo + Pencil'}
+        aria-label={pencilOnly ? 'Só Pencil' : 'Dedo + Pencil'}
+      >
+        <PencilOnlyIcon active={pencilOnly} />
+      </button>
 
       <div className="tb-sep" />
 

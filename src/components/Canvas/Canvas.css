@@ -9,10 +9,30 @@
 .tool-lasso   { cursor: crosshair; }
 .tool-text    { cursor: text; }
 .tool-sticker { cursor: copy; }
+.tool-hand    { cursor: grab; }
 
 .drawing-canvas {
   position: absolute;
   inset: 0;
   display: block;
   /* canvas é transparente — o fundo do papel aparece através dele */
+}
+
+/* ── PDF annotation link overlay ──────────────────────────────────────────── */
+
+.pdf-annot-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.pdf-annot-link {
+  position: absolute;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.tool-hand .pdf-annot-link:hover {
+  background: rgba(77, 148, 224, 0.15);
+  outline: 1px solid rgba(77, 148, 224, 0.4);
 }

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { renderStrokes, renderStroke } from '../../utils/drawing.js'
 import { renderLassoOverlay } from '../../utils/lasso.js'
 import { makeDebouncedThumbnail } from '../../utils/thumbnail.js'
@@ -39,6 +39,10 @@ export default function Canvas({
   onEndStroke,
   onEraseAt,
   onEraseEnd,
+  // PDF navigation (from annotation link clicks)
+  onGoToPage,
+  // Palm rejection: when true, only pen/stylus input is accepted
+  pencilOnly,
   // Thumbnail
   onThumbnailGenerated,
   // Exposes current canvas size to parent
@@ -51,6 +55,7 @@ export default function Canvas({
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
   const [lassoCursor, setLassoCursor] = useState('crosshair')
   const debouncedThumb = useRef(makeDebouncedThumbnail(1500))
+  const [pdfLinks, setPdfLinks] = useState([])
 
   // drawRef always holds the freshest draw function
   const drawRef = useRef(null)
@@ -101,11 +106,14 @@ export default function Canvas({
 
   useEffect(() => { drawRef.current?.() }, [strokes, liveStroke, lasso])
 
-  // PDF background rendering
+  // PDF background rendering + annotation link extraction
   useEffect(() => {
     const pdfCanvas = pdfCanvasRef.current
     const drawCanvas = canvasRef.current
-    if (!pdfCanvas || !pdfDoc || !pdfPageNum || !drawCanvas || drawCanvas.width === 0) return
+    if (!pdfCanvas || !pdfDoc || !pdfPageNum || !drawCanvas || drawCanvas.width === 0) {
+      setPdfLinks([])
+      return
+    }
 
     if (pdfCanvas.width !== drawCanvas.width || pdfCanvas.height !== drawCanvas.height) {
       pdfCanvas.width = drawCanvas.width
@@ -115,7 +123,7 @@ export default function Canvas({
     let cancelled = false
     let renderTask = null
 
-    pdfDoc.getPage(pdfPageNum).then((page) => {
+    pdfDoc.getPage(pdfPageNum).then(async (page) => {
       if (cancelled) return
       const viewport = page.getViewport({ scale: 1 })
       const scale = Math.min(pdfCanvas.width / viewport.width, pdfCanvas.height / viewport.height)
@@ -123,7 +131,25 @@ export default function Canvas({
       const ctx = pdfCanvas.getContext('2d')
       ctx.clearRect(0, 0, pdfCanvas.width, pdfCanvas.height)
       renderTask = page.render({ canvasContext: ctx, viewport: scaled })
-      return renderTask.promise
+      await renderTask.promise
+
+      if (cancelled) return
+
+      // Extract link annotations and compute canvas-space positions
+      const annots = await page.getAnnotations()
+      const links = []
+      for (const annot of annots) {
+        if (annot.subtype !== 'Link') continue
+        const [vx1, vy1, vx2, vy2] = scaled.convertToViewportRectangle(annot.rect)
+        links.push({
+          left:   Math.min(vx1, vx2),
+          top:    Math.min(vy1, vy2),
+          width:  Math.abs(vx2 - vx1),
+          height: Math.abs(vy2 - vy1),
+          annot,
+        })
+      }
+      if (!cancelled) setPdfLinks(links)
     }).catch((err) => {
       if (!cancelled) console.error('[PDF render]', err)
     })
@@ -166,12 +192,23 @@ export default function Canvas({
     return { x: e.clientX - r.left, y: e.clientY - r.top, p: e.pressure > 0 ? e.pressure : 0.5 }
   }
 
+  // Returns true if this input should be ignored (palm or filtered by mode)
+  function shouldIgnoreInput(e) {
+    // Large contact area = palm resting on screen — always reject
+    if (e.pointerType === 'touch' && (e.width > 40 || e.height > 40)) return true
+    // Pencil-only mode: reject anything that isn't a stylus
+    if (pencilOnly && e.pointerType !== 'pen') return true
+    return false
+  }
+
   const isDrawingTool = tool === 'pen' || tool === 'brush' || tool === 'highlight' || tool === 'eraser'
   const isLassoTool = tool === 'lasso'
   const isStickerTool = tool === 'sticker'
+  const isHandTool = tool === 'hand'
 
   function handlePointerDown(e) {
-    if (tool === 'text' || isStickerTool) return // TextLayer / StickerLayer handles this
+    if (tool === 'text' || isStickerTool || isHandTool) return
+    if (shouldIgnoreInput(e)) return
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch {}
     isDown.current = true
     const { x, y, p } = coords(e)
@@ -188,6 +225,7 @@ export default function Canvas({
   }
 
   function handlePointerMove(e) {
+    if (shouldIgnoreInput(e)) return
     if (!isDown.current && tool !== 'lasso') return
     const { x, y, p } = coords(e)
 
@@ -219,6 +257,25 @@ export default function Canvas({
     if (tool === 'eraser') onEraseEnd?.()
   }
 
+  // Handle clicks on PDF annotation links (hand tool mode)
+  const handleAnnotClick = useCallback(async (annot) => {
+    if (!pdfDoc) return
+    if (annot.url) {
+      window.open(annot.url, '_blank', 'noopener,noreferrer')
+      return
+    }
+    let dest = annot.dest
+    if (!dest && annot.action?.type === 'GoTo') dest = annot.action.dest
+    if (!dest) return
+    if (typeof dest === 'string') {
+      dest = await pdfDoc.getDestination(dest)
+    }
+    if (dest?.[0]) {
+      const pageIndex = await pdfDoc.getPageIndex(dest[0])
+      onGoToPage?.(pageIndex + 1) // convert to 1-based pdfPageNum
+    }
+  }, [pdfDoc, onGoToPage])
+
   const paperStyle = PAPER_STYLE[paperType] ?? {}
 
   let cursorClass = 'tool-pen'
@@ -226,6 +283,7 @@ export default function Canvas({
   else if (tool === 'lasso') cursorClass = 'tool-lasso'
   else if (tool === 'text') cursorClass = 'tool-text'
   else if (isStickerTool) cursorClass = 'tool-sticker'
+  else if (isHandTool) cursorClass = 'tool-hand'
 
   const extraStyle = tool === 'lasso' ? { cursor: lassoCursor } : {}
 
@@ -247,8 +305,29 @@ export default function Canvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        style={{ touchAction: 'none', position: 'relative' }}
+        style={{ touchAction: 'none', position: 'absolute', inset: 0, pointerEvents: isHandTool ? 'none' : 'auto' }}
       />
+      {/* PDF annotation link overlay — only interactive in hand mode */}
+      {pdfDoc && pdfLinks.length > 0 && (
+        <div
+          className="pdf-annot-layer"
+          style={{ pointerEvents: isHandTool ? 'auto' : 'none' }}
+        >
+          {pdfLinks.map((link, i) => (
+            <div
+              key={i}
+              className="pdf-annot-link"
+              style={{
+                left:   link.left,
+                top:    link.top,
+                width:  link.width,
+                height: link.height,
+              }}
+              onClick={() => handleAnnotClick(link.annot)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

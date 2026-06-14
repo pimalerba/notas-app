@@ -100,6 +100,7 @@ export default function Editor({ notebookId, onBack }) {
 
   const [armedSticker, setArmedSticker] = useState(null) // sticker definition ready to place
   const [showStickerPanel, setShowStickerPanel] = useState(false)
+  const [pencilOnly, setPencilOnly] = useState(false)
 
   const canvasSizeRef = useRef({ width: 1280, height: 900 })
   const [toast, setToast] = useState(null)
@@ -131,6 +132,11 @@ export default function Editor({ notebookId, onBack }) {
       notebookName: notebook?.name ?? 'notas',
     })
     showToast('Página exportada como PNG ✓')
+  }
+
+  function handleGoToPage(pdfPageNum) {
+    const target = pages.find((p) => p.pdfPageNum === pdfPageNum)
+    if (target) setActivePageId(target.id)
   }
 
   async function handleExportPdf() {
@@ -233,6 +239,8 @@ export default function Editor({ notebookId, onBack }) {
           canRedo={canRedo}
           onUndo={undo}
           onRedo={redo}
+          pencilOnly={pencilOnly}
+          onTogglePencilOnly={() => setPencilOnly((v) => !v)}
         />
         <Canvas
           paperType={notebook?.paperType ?? 'blank'}
@@ -249,6 +257,8 @@ export default function Editor({ notebookId, onBack }) {
           onEraseEnd={flushEraseBuffer}
           onThumbnailGenerated={handleThumbnailGenerated}
           sizeRef={canvasSizeRef}
+          pencilOnly={pencilOnly}
+          onGoToPage={handleGoToPage}
         />
         <TextLayer
           texts={texts}
