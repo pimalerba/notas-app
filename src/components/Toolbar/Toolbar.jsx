@@ -156,14 +156,22 @@ export default function Toolbar({
 
   const [showExportMenu, setShowExportMenu] = useState(false)
   const exportBtnRef = useRef(null)
+  const exportMenuRef = useRef(null)
   const [exportMenuPos, setExportMenuPos] = useState({ top: 0, left: 0 })
 
   useEffect(() => {
     if (!showExportMenu) return
     function handleOutside(e) {
-      if (!exportBtnRef.current?.contains(e.target)) setShowExportMenu(false)
+      if (
+        !exportBtnRef.current?.contains(e.target) &&
+        !exportMenuRef.current?.contains(e.target)
+      ) {
+        setShowExportMenu(false)
+      }
     }
-    setTimeout(() => document.addEventListener('mousedown', handleOutside), 50)
+    // Listener attaches after the state change, so the click that opened the
+    // menu is already past and won't immediately close it.
+    document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [showExportMenu])
 
@@ -435,6 +443,7 @@ export default function Toolbar({
 
     {showExportMenu && (
       <div
+        ref={exportMenuRef}
         className="tb-export-menu"
         style={{ top: exportMenuPos.top, left: exportMenuPos.left }}
       >
