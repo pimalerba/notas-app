@@ -78,16 +78,10 @@ export default function Editor({ notebookId, onBack }) {
     setSelectedTextId, createText, updateText, removeText,
   } = useTextElements(activePage?.id)
 
-  // Clear text selection when switching away from text tool
-  useEffect(() => {
-    if (tool !== 'text') setSelectedTextId(null)
-  }, [tool, setSelectedTextId])
-
-  // Delete key: delete lasso selection or selected text
+  // Delete key: delete lasso selection or selected text element
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Only when not editing text in a contenteditable
         const tag = document.activeElement?.tagName
         const editable = document.activeElement?.contentEditable === 'true'
         if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return
@@ -95,12 +89,15 @@ export default function Editor({ notebookId, onBack }) {
         if (tool === 'lasso' && lasso.hasSelection) {
           e.preventDefault()
           lasso.deleteSelected()
+        } else if (selectedTextId) {
+          e.preventDefault()
+          removeText(selectedTextId)
         }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [tool, lasso])
+  }, [tool, lasso, selectedTextId, removeText])
 
   const handleThumbnailGenerated = useCallback((dataUrl) => {
     if (activePage) updateThumbnail(activePage.id, dataUrl)

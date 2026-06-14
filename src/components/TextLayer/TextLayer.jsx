@@ -147,7 +147,7 @@ function TextElement({ el, isSelected, isTextTool, onSelect, onUpdate, onDelete 
   return (
     <div
       className={`tx-el ${isSelected ? 'selected' : ''} ${dragging ? 'dragging' : ''}`}
-      style={{ left: el.x, top: el.y, width: el.width, minHeight: el.height }}
+      style={{ left: el.x, top: el.y, width: el.width, minHeight: el.height, pointerEvents: 'auto' }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
@@ -192,7 +192,6 @@ export default function TextLayer({
   texts,
   selectedTextId,
   tool,
-  canvasRef,
   onCreateText,
   onSelectText,
   onUpdateText,
@@ -203,23 +202,22 @@ export default function TextLayer({
   function handleLayerPointerDown(e) {
     if (!isTextTool) return
     if (e.target !== e.currentTarget) return
-
     const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    onCreateText(x, y)
+    onCreateText(e.clientX - rect.left, e.clientY - rect.top)
   }
 
   function handleLayerClick(e) {
-    if (e.target === e.currentTarget && selectedTextId) {
-      onSelectText(null)
-    }
+    // Click on empty space deselects
+    if (e.target === e.currentTarget) onSelectText(null)
   }
 
   return (
     <div
       className="text-layer"
-      style={{ pointerEvents: isTextTool || selectedTextId ? 'auto' : 'none' }}
+      // Only the background layer captures events when text tool is active.
+      // Individual text elements always have pointer-events: auto (set inline)
+      // so they remain clickable regardless of the active tool.
+      style={{ pointerEvents: isTextTool ? 'auto' : 'none' }}
       onPointerDown={handleLayerPointerDown}
       onClick={handleLayerClick}
     >
