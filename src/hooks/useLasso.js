@@ -10,7 +10,7 @@ import {
 
 // state: 'idle' | 'drawing' | 'selected' | 'moving' | 'resizing'
 
-export function useLasso(strokes, onUpdateStrokes, onBulkDeleteStrokes) {
+export function useLasso(strokes, onUpdateStrokes, onBulkDeleteStrokes, onBulkRestoreStrokes, onHistory) {
   const [state, setState] = useState('idle')
   const [path, setPath] = useState([])
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -101,12 +101,17 @@ export function useLasso(strokes, onUpdateStrokes, onBulkDeleteStrokes) {
     if (state === 'moving' && dragStart.current) {
       const { dx, dy } = moveOffset
       if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+        const originals = selectedStrokes.map((s) => ({ ...s }))
         const updated = selectedStrokes.map((s) => ({
           ...s,
           points: s.points.map(([px, py, pp]) => [px + dx, py + dy, pp]),
           updatedAt: Date.now(),
         }))
         await onUpdateStrokes(updated)
+        onHistory?.(
+          async () => onUpdateStrokes(originals),
+          async () => onUpdateStrokes(updated),
+        )
       }
       setMoveOffset({ dx: 0, dy: 0 })
       dragStart.current = null
@@ -116,6 +121,7 @@ export function useLasso(strokes, onUpdateStrokes, onBulkDeleteStrokes) {
 
     if (state === 'resizing' && resizeTransform && savedBB.current) {
       const t = resizeTransform
+      const originals = selectedStrokes.map((s) => ({ ...s }))
       const updated = selectedStrokes.map((s) => ({
         ...s,
         size: Math.max(1, s.size * Math.sqrt(Math.abs(t.scaleX * t.scaleY))),
@@ -123,6 +129,10 @@ export function useLasso(strokes, onUpdateStrokes, onBulkDeleteStrokes) {
         updatedAt: Date.now(),
       }))
       await onUpdateStrokes(updated)
+      onHistory?.(
+        async () => onUpdateStrokes(originals),
+        async () => onUpdateStrokes(updated),
+      )
       setResizeTransform(null)
       savedBB.current = null
       savedHandle.current = null
@@ -133,7 +143,12 @@ export function useLasso(strokes, onUpdateStrokes, onBulkDeleteStrokes) {
 
   async function deleteSelected() {
     if (!selectedIds.size) return
+    const deleted = selectedStrokes.map((s) => ({ ...s }))
     await onBulkDeleteStrokes([...selectedIds])
+    onHistory?.(
+      async () => onBulkRestoreStrokes?.(deleted),
+      async () => onBulkDeleteStrokes([...deleted.map((s) => s.id)]),
+    )
     clearSelection()
   }
 

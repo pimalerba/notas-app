@@ -105,6 +105,24 @@ function TrashIcon() {
   )
 }
 
+function UndoIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7a5 5 0 1 0 1.5-3.5L2 1"/>
+      <path d="M2 1v4h4"/>
+    </svg>
+  )
+}
+
+function RedoIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 7a5 5 0 1 1-1.5-3.5L14 1"/>
+      <path d="M14 1v4h-4"/>
+    </svg>
+  )
+}
+
 function ExportIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -148,6 +166,11 @@ export default function Toolbar({
   // Export
   onExportPng,
   onExportPdf,
+  // Undo / Redo
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }) {
   const toolbarRef = useRef(null)
   const [pos, setPos] = useState({ x: 0, y: 20 })
@@ -253,6 +276,26 @@ export default function Toolbar({
       {/* Back */}
       <button className="tb-btn" onClick={onBack} title="Voltar à biblioteca">
         <BackIcon />
+      </button>
+
+      {/* Undo / Redo */}
+      <button
+        className="tb-btn"
+        onClick={onUndo}
+        disabled={!canUndo}
+        title="Desfazer (⌘Z)"
+        aria-label="Desfazer"
+      >
+        <UndoIcon />
+      </button>
+      <button
+        className="tb-btn"
+        onClick={onRedo}
+        disabled={!canRedo}
+        title="Refazer (⌘⇧Z)"
+        aria-label="Refazer"
+      >
+        <RedoIcon />
       </button>
 
       {/* Export */}

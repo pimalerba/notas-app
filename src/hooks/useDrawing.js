@@ -52,16 +52,22 @@ export function useDrawing(pageId) {
   const [tool, setTool] = useState('pen')
   const [color, setColor] = useState('#111827')
   const [strokeSize, setStrokeSize] = useState(6)
-  const [eraserMode, setEraserMode] = useState('stroke') // 'stroke' | 'highlight'
+  const [eraserMode, setEraserMode] = useState('stroke')
 
   const activeStroke = useRef(null)
   const [liveStroke, setLiveStroke] = useState(null)
+  const brushState = useRef(null)
 
-  // Para calcular velocidade no brush pen
-  const brushState = useRef(null) // { x, y, t }
-
+  // Generic command history: each entry is { undo: async fn, redo: async fn }
   const undoStack = useRef([])
   const redoStack = useRef([])
+  // Reactive flag so toolbar buttons update
+  const [historyTick, setHistoryTick] = useState(0)
+
+  // Pending erased strokes collected during a single eraser drag
+  const erasedBuffer = useRef([])
+
+  function bumpTick() { setHistoryTick((t) => t + 1) }
 
   useEffect(() => {
     if (!pageId) {
@@ -73,12 +79,62 @@ export function useDrawing(pageId) {
     getStrokes(pageId).then(setStrokes)
     undoStack.current = []
     redoStack.current = []
+    erasedBuffer.current = []
     activeStroke.current = null
     setLiveStroke(null)
+    bumpTick()
   }, [pageId])
+
+  // ── History helpers ────────────────────────────────────────────────────────
+
+  const pushHistory = useCallback((undoFn, redoFn) => {
+    undoStack.current.push({ undo: undoFn, redo: redoFn })
+    redoStack.current = []
+    bumpTick()
+  }, [])
+
+  const undo = useCallback(async () => {
+    const cmd = undoStack.current.pop()
+    if (!cmd) return
+    await cmd.undo()
+    redoStack.current.push(cmd)
+    bumpTick()
+  }, [])
+
+  const redo = useCallback(async () => {
+    const cmd = redoStack.current.pop()
+    if (!cmd) return
+    await cmd.redo()
+    undoStack.current.push(cmd)
+    bumpTick()
+  }, [])
+
+  // ── Bulk restore (used by lasso delete undo) ───────────────────────────────
+
+  const bulkRestoreStrokes = useCallback(async (toRestore) => {
+    for (const s of toRestore) await putStroke(s)
+    setStrokes((prev) => {
+      const existing = new Set(prev.map((s) => s.id))
+      return [...prev, ...toRestore.filter((s) => !existing.has(s.id))]
+    })
+  }, [])
+
+  // ── Drawing ────────────────────────────────────────────────────────────────
 
   const startStroke = useCallback((x, y, pressure = 0.5) => {
     if (!pageId) return
+    // Flush any buffered erases when starting a new action
+    if (erasedBuffer.current.length > 0) {
+      const erased = [...erasedBuffer.current]
+      erasedBuffer.current = []
+      pushHistory(
+        async () => { await bulkRestoreStrokes(erased) },
+        async () => {
+          for (const s of erased) await deleteStroke(s.id)
+          setStrokes((prev) => { const ids = new Set(erased.map((s) => s.id)); return prev.filter((s) => !ids.has(s.id)) })
+        },
+      )
+    }
     brushState.current = { x, y, t: performance.now() }
     activeStroke.current = {
       id: makeId(),
@@ -89,19 +145,17 @@ export function useDrawing(pageId) {
       points: [[x, y, pressure]],
     }
     setLiveStroke({ ...activeStroke.current })
-  }, [pageId, tool, color, strokeSize])
+  }, [pageId, tool, color, strokeSize, pushHistory, bulkRestoreStrokes])
 
   const addPoint = useCallback((x, y, pressure = 0.5) => {
     if (!activeStroke.current) return
 
     let p = pressure
-
     if (activeStroke.current.tool === 'brush' && brushState.current) {
       const now = performance.now()
       const dt = Math.max(1, now - brushState.current.t)
       const dist = Math.hypot(x - brushState.current.x, y - brushState.current.y)
-      const velocity = dist / dt // px/ms
-      // velocidade alta → traço fino; velocidade baixa → traço grosso
+      const velocity = dist / dt
       p = Math.max(0.05, Math.min(0.98, 1 - velocity * 1.4))
       brushState.current = { x, y, t: now }
     }
@@ -122,48 +176,43 @@ export function useDrawing(pageId) {
     setLiveStroke(null)
     await putStroke(s)
     setStrokes((prev) => [...prev, s])
-    undoStack.current.push({ type: 'add', stroke: s })
-    redoStack.current = []
-  }, [])
+    pushHistory(
+      async () => { await deleteStroke(s.id); setStrokes((prev) => prev.filter((x) => x.id !== s.id)) },
+      async () => { await putStroke(s); setStrokes((prev) => [...prev, s]) },
+    )
+  }, [pushHistory])
 
-  const undo = useCallback(async () => {
-    const action = undoStack.current.pop()
-    if (!action) return
-    if (action.type === 'add') {
-      await deleteStroke(action.stroke.id)
-      setStrokes((prev) => prev.filter((s) => s.id !== action.stroke.id))
-      redoStack.current.push({ type: 'remove', stroke: action.stroke })
-    } else {
-      await putStroke(action.stroke)
-      setStrokes((prev) => [...prev, action.stroke])
-      redoStack.current.push({ type: 'add', stroke: action.stroke })
-    }
-  }, [])
+  // ── Eraser ─────────────────────────────────────────────────────────────────
 
-  const redo = useCallback(async () => {
-    const action = redoStack.current.pop()
-    if (!action) return
-    if (action.type === 'add') {
-      await deleteStroke(action.stroke.id)
-      setStrokes((prev) => prev.filter((s) => s.id !== action.stroke.id))
-      undoStack.current.push({ type: 'remove', stroke: action.stroke })
-    } else {
-      await putStroke(action.stroke)
-      setStrokes((prev) => [...prev, action.stroke])
-      undoStack.current.push({ type: 'add', stroke: action.stroke })
-    }
-  }, [])
+  const eraseAt = useCallback(async (x, y, radius = 20) => {
+    const r2 = radius * radius
+    const toRemove = strokes.filter((s) => {
+      if (eraserMode === 'highlight' && s.tool !== 'highlight') return false
+      const alreadyErased = erasedBuffer.current.some((e) => e.id === s.id)
+      if (alreadyErased) return false
+      return s.points.some(([px, py]) => (px - x) ** 2 + (py - y) ** 2 <= r2)
+    })
+    if (!toRemove.length) return
+    for (const s of toRemove) await deleteStroke(s.id)
+    erasedBuffer.current.push(...toRemove)
+    setStrokes((prev) => prev.filter((s) => !toRemove.some((r) => r.id === s.id)))
+  }, [strokes, eraserMode])
 
-  const clearPage = useCallback(async () => {
-    if (!pageId) return
-    await deleteStrokesByPage(pageId)
-    const snapshot = strokes
-    for (const s of snapshot) {
-      undoStack.current.push({ type: 'remove', stroke: s })
-    }
-    redoStack.current = []
-    setStrokes([])
-  }, [pageId, strokes])
+  // Flush erased buffer when pointer is released (called from Canvas via tool change or pointerUp)
+  const flushEraseBuffer = useCallback(() => {
+    if (erasedBuffer.current.length === 0) return
+    const erased = [...erasedBuffer.current]
+    erasedBuffer.current = []
+    pushHistory(
+      async () => { await bulkRestoreStrokes(erased) },
+      async () => {
+        for (const s of erased) await deleteStroke(s.id)
+        setStrokes((prev) => { const ids = new Set(erased.map((s) => s.id)); return prev.filter((s) => !ids.has(s.id)) })
+      },
+    )
+  }, [pushHistory, bulkRestoreStrokes])
+
+  // ── Lasso support (update / delete) ───────────────────────────────────────
 
   const updateStrokes = useCallback(async (updates) => {
     for (const s of updates) await putStroke(s)
@@ -176,20 +225,16 @@ export function useDrawing(pageId) {
     setStrokes((prev) => prev.filter((s) => !idSet.has(s.id)))
   }, [])
 
-  const eraseAt = useCallback(async (x, y, radius = 20) => {
-    const r2 = radius * radius
-    const toRemove = strokes.filter((s) => {
-      if (eraserMode === 'highlight' && s.tool !== 'highlight') return false
-      return s.points.some(([px, py]) => (px - x) ** 2 + (py - y) ** 2 <= r2)
-    })
-    if (!toRemove.length) return
-    for (const s of toRemove) {
-      await deleteStroke(s.id)
-      undoStack.current.push({ type: 'remove', stroke: s })
-    }
-    redoStack.current = []
-    setStrokes((prev) => prev.filter((s) => !toRemove.includes(s)))
-  }, [strokes, eraserMode])
+  const clearPage = useCallback(async () => {
+    if (!pageId) return
+    const snapshot = strokes
+    await deleteStrokesByPage(pageId)
+    setStrokes([])
+    pushHistory(
+      async () => { await bulkRestoreStrokes(snapshot) },
+      async () => { await deleteStrokesByPage(pageId); setStrokes([]) },
+    )
+  }, [pageId, strokes, pushHistory, bulkRestoreStrokes])
 
   return {
     strokes,
@@ -204,12 +249,15 @@ export function useDrawing(pageId) {
     setEraserMode,
     updateStrokes,
     bulkDeleteStrokes,
+    bulkRestoreStrokes,
     startStroke,
     addPoint,
     endStroke,
     eraseAt,
+    flushEraseBuffer,
     undo,
     redo,
+    pushHistory,
     canUndo: undoStack.current.length > 0,
     canRedo: redoStack.current.length > 0,
     clearPage,

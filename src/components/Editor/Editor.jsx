@@ -65,12 +65,13 @@ export default function Editor({ notebookId, onBack }) {
     strokes, liveStroke,
     tool, color, strokeSize, eraserMode,
     setTool, setColor, setStrokeSize, setEraserMode,
-    updateStrokes, bulkDeleteStrokes,
-    startStroke, addPoint, endStroke, eraseAt,
+    updateStrokes, bulkDeleteStrokes, bulkRestoreStrokes,
+    startStroke, addPoint, endStroke, eraseAt, flushEraseBuffer,
+    undo, redo, canUndo, canRedo, pushHistory,
   } = useDrawing(activePage?.id)
 
   // Lasso
-  const lasso = useLasso(strokes, updateStrokes, bulkDeleteStrokes)
+  const lasso = useLasso(strokes, updateStrokes, bulkDeleteStrokes, bulkRestoreStrokes, pushHistory)
   const prevToolRef = useRef(tool)
   useEffect(() => {
     if (prevToolRef.current === 'lasso' && tool !== 'lasso') lasso.clearSelection()
@@ -146,13 +147,34 @@ export default function Editor({ notebookId, onBack }) {
     showToast('Caderno exportado como PDF ✓')
   }
 
-  // Delete key handler
+  // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e) {
+      const tag = document.activeElement?.tagName
+      const editable = document.activeElement?.contentEditable === 'true'
+      const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || editable
+
+      // Undo: Cmd+Z / Ctrl+Z
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        if (inInput) return
+        e.preventDefault()
+        undo()
+        return
+      }
+
+      // Redo: Cmd+Shift+Z / Ctrl+Y
+      if (
+        ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'z') ||
+        (e.ctrlKey && e.key === 'y')
+      ) {
+        if (inInput) return
+        e.preventDefault()
+        redo()
+        return
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const tag = document.activeElement?.tagName
-        const editable = document.activeElement?.contentEditable === 'true'
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return
+        if (inInput) return
 
         if (tool === 'lasso' && lasso.hasSelection) {
           e.preventDefault()
@@ -168,7 +190,7 @@ export default function Editor({ notebookId, onBack }) {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [tool, lasso, selectedTextId, removeText, selectedStickerId, removeStickerInstance])
+  }, [tool, lasso, selectedTextId, removeText, selectedStickerId, removeStickerInstance, undo, redo])
 
   const handleThumbnailGenerated = useCallback((dataUrl) => {
     if (activePage) updateThumbnail(activePage.id, dataUrl)
@@ -207,6 +229,10 @@ export default function Editor({ notebookId, onBack }) {
           onDeleteSelectedSticker={() => selectedStickerId && removeStickerInstance(selectedStickerId)}
           onExportPng={handleExportPng}
           onExportPdf={handleExportPdf}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={undo}
+          onRedo={redo}
         />
         <Canvas
           paperType={notebook?.paperType ?? 'blank'}
@@ -220,6 +246,7 @@ export default function Editor({ notebookId, onBack }) {
           onAddPoint={addPoint}
           onEndStroke={endStroke}
           onEraseAt={eraseAt}
+          onEraseEnd={flushEraseBuffer}
           onThumbnailGenerated={handleThumbnailGenerated}
           sizeRef={canvasSizeRef}
         />

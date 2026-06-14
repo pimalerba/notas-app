@@ -49,6 +49,8 @@
 
 .tb-btn:hover  { background: var(--gray-100); color: var(--text-primary); }
 .tb-btn.active { background: var(--blue-100); color: var(--blue-500); }
+.tb-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.tb-btn:disabled:hover { background: none; color: var(--gray-500); }
 
 /* ── Separador ──────────────────────────────────────────────────────────── */
 

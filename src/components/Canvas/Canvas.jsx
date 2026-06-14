@@ -38,6 +38,7 @@ export default function Canvas({
   onAddPoint,
   onEndStroke,
   onEraseAt,
+  onEraseEnd,
   // Thumbnail
   onThumbnailGenerated,
   // Exposes current canvas size to parent
@@ -215,6 +216,7 @@ export default function Canvas({
     }
 
     if (isDrawingTool && tool !== 'eraser') onEndStroke()
+    if (tool === 'eraser') onEraseEnd?.()
   }
 
   const paperStyle = PAPER_STYLE[paperType] ?? {}
