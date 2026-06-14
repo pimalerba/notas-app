@@ -129,6 +129,7 @@ export default function Editor({ notebookId, onBack }) {
           onDeleteLassoSelection={lasso.deleteSelected}
           selectedText={selectedText}
           onUpdateText={updateText}
+          onDeleteSelectedText={() => selectedTextId && removeText(selectedTextId)}
         />
         <Canvas
           paperType={notebook?.paperType ?? 'blank'}

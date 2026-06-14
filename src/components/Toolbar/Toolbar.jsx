@@ -117,6 +117,7 @@ export default function Toolbar({
   // Text element
   selectedText,
   onUpdateText,
+  onDeleteSelectedText,
 }) {
   const toolbarRef = useRef(null)
   const [pos, setPos] = useState({ x: 0, y: 20 })
@@ -166,6 +167,8 @@ export default function Toolbar({
 
   // Text formatting section
   const showTextFormat = isText && selectedText
+  // Show minimal delete bar when text selected but another tool is active
+  const showTextDeleteOnly = selectedText && !isText
   const showLassoSection = isLasso
   const showEraserModes = isEraser
   const showColors = !isEraser && !isLasso && !isText && !showTextFormat
@@ -233,6 +236,19 @@ export default function Toolbar({
         </div>
       )}
 
+      {showTextDeleteOnly && (
+        <div className="tb-lasso-section">
+          <button
+            className="tb-action-btn"
+            onClick={onDeleteSelectedText}
+            title="Deletar caixa de texto"
+          >
+            <TrashIcon />
+            <span>Deletar texto</span>
+          </button>
+        </div>
+      )}
+
       {showTextFormat && selectedText && (
         <div className="tb-text-format">
           {/* Font family */}
@@ -285,6 +301,17 @@ export default function Toolbar({
               />
             ))}
           </div>
+
+          <div className="tb-sep" style={{ height: 18 }} />
+
+          {/* Delete */}
+          <button
+            className="tb-action-btn"
+            onClick={onDeleteSelectedText}
+            title="Deletar caixa de texto"
+          >
+            <TrashIcon />
+          </button>
         </div>
       )}
 
