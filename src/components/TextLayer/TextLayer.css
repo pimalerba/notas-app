@@ -1,0 +1,110 @@
+.text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ── Elemento de texto ────────────────────────────────────────────────────── */
+
+.tx-el {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+  border: 1.5px solid transparent;
+  transition: border-color 80ms;
+  cursor: default;
+  box-sizing: border-box;
+}
+
+.tx-el:hover {
+  border-color: rgba(59,130,246,0.35);
+}
+
+.tx-el.selected {
+  border-color: #3B82F6;
+}
+
+.tx-el.dragging {
+  opacity: 0.85;
+  cursor: move;
+}
+
+/* ── Barra de arraste ─────────────────────────────────────────────────────── */
+
+.tx-drag-bar {
+  height: 10px;
+  cursor: move;
+  flex-shrink: 0;
+  border-radius: 4px 4px 0 0;
+}
+
+.tx-el.selected .tx-drag-bar {
+  background: rgba(59,130,246,0.12);
+}
+
+/* ── Conteúdo de texto ────────────────────────────────────────────────────── */
+
+.tx-content {
+  flex: 1;
+  padding: 4px 8px 6px;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+  min-height: 24px;
+  cursor: text;
+}
+
+.tx-content[contenteditable="false"] {
+  cursor: default;
+}
+
+.tx-placeholder {
+  color: #9CA3AF;
+  pointer-events: none;
+  user-select: none;
+  font-style: italic;
+}
+
+/* ── Botão deletar ────────────────────────────────────────────────────────── */
+
+.tx-delete {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid #E5E7EB;
+  background: white;
+  color: #6B7280;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  transition: background 80ms, color 80ms;
+}
+
+.tx-delete:hover { background: #FEE2E2; color: #DC2626; border-color: #DC2626; }
+
+/* ── Handles de redimensionamento ────────────────────────────────────────── */
+
+.tx-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: white;
+  border: 2px solid #3B82F6;
+  box-sizing: border-box;
+}
+
+.tx-handle-nw { top: -5px; left: -5px; cursor: nw-resize; }
+.tx-handle-ne { top: -5px; right: -5px; cursor: ne-resize; }
+.tx-handle-sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+.tx-handle-se { bottom: -5px; right: -5px; cursor: se-resize; }

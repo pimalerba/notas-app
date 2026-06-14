@@ -1,11 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { getNotebook, getPdfData, putPage } from '../../db/index.js'
 import { usePages } from '../../hooks/usePages.js'
 import { useDrawing } from '../../hooks/useDrawing.js'
+import { useLasso } from '../../hooks/useLasso.js'
+import { useTextElements } from '../../hooks/useTextElements.js'
 import { openPdf } from '../../utils/pdf.js'
 import Canvas from '../Canvas/Canvas.jsx'
 import Toolbar from '../Toolbar/Toolbar.jsx'
 import PagePanel from '../PagePanel/PagePanel.jsx'
+import TextLayer from '../TextLayer/TextLayer.jsx'
 import './Editor.css'
 
 export default function Editor({ notebookId, onBack }) {
@@ -32,12 +35,10 @@ export default function Editor({ notebookId, onBack }) {
     setActivePageId, updateThumbnail, reloadPages,
   } = usePages(notebookId)
 
-  // Cria a primeira página apenas para cadernos normais (PDFs já têm páginas)
   useEffect(() => {
     if (notebook && notebook.type !== 'pdf' && pages.length === 0) createPage()
   }, [notebook, pages.length, createPage])
 
-  // Fallback: cria páginas do PDF se o background job falhou
   useEffect(() => {
     if (!pdfDoc || pagesLoading || pages.length > 0) return
     const now = Date.now()
@@ -59,8 +60,47 @@ export default function Editor({ notebookId, onBack }) {
     strokes, liveStroke,
     tool, color, strokeSize, eraserMode,
     setTool, setColor, setStrokeSize, setEraserMode,
+    updateStrokes, bulkDeleteStrokes,
     startStroke, addPoint, endStroke, eraseAt,
   } = useDrawing(activePage?.id)
+
+  // Lasso — clear selection when tool changes away from lasso
+  const lasso = useLasso(strokes, updateStrokes, bulkDeleteStrokes)
+  const prevToolRef = useRef(tool)
+  useEffect(() => {
+    if (prevToolRef.current === 'lasso' && tool !== 'lasso') lasso.clearSelection()
+    prevToolRef.current = tool
+  }, [tool])
+
+  // Text elements
+  const {
+    texts, selectedText, selectedTextId,
+    setSelectedTextId, createText, updateText, removeText,
+  } = useTextElements(activePage?.id)
+
+  // Clear text selection when switching away from text tool
+  useEffect(() => {
+    if (tool !== 'text') setSelectedTextId(null)
+  }, [tool, setSelectedTextId])
+
+  // Delete key: delete lasso selection or selected text
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Only when not editing text in a contenteditable
+        const tag = document.activeElement?.tagName
+        const editable = document.activeElement?.contentEditable === 'true'
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return
+
+        if (tool === 'lasso' && lasso.hasSelection) {
+          e.preventDefault()
+          lasso.deleteSelected()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [tool, lasso])
 
   const handleThumbnailGenerated = useCallback((dataUrl) => {
     if (activePage) updateThumbnail(activePage.id, dataUrl)
@@ -88,6 +128,10 @@ export default function Editor({ notebookId, onBack }) {
           onSetStrokeSize={setStrokeSize}
           onSetEraserMode={setEraserMode}
           onBack={onBack}
+          lassoHasSelection={lasso.hasSelection}
+          onDeleteLassoSelection={lasso.deleteSelected}
+          selectedText={selectedText}
+          onUpdateText={updateText}
         />
         <Canvas
           paperType={notebook?.paperType ?? 'blank'}
@@ -96,11 +140,21 @@ export default function Editor({ notebookId, onBack }) {
           tool={tool}
           pdfDoc={pdfDoc}
           pdfPageNum={activePage?.pdfPageNum ?? null}
+          lasso={lasso}
           onStartStroke={startStroke}
           onAddPoint={addPoint}
           onEndStroke={endStroke}
           onEraseAt={eraseAt}
           onThumbnailGenerated={handleThumbnailGenerated}
+        />
+        <TextLayer
+          texts={texts}
+          selectedTextId={selectedTextId}
+          tool={tool}
+          onCreateText={createText}
+          onSelectText={setSelectedTextId}
+          onUpdateText={updateText}
+          onDeleteText={removeText}
         />
       </div>
     </div>

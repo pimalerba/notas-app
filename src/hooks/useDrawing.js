@@ -165,6 +165,17 @@ export function useDrawing(pageId) {
     setStrokes([])
   }, [pageId, strokes])
 
+  const updateStrokes = useCallback(async (updates) => {
+    for (const s of updates) await putStroke(s)
+    setStrokes((prev) => prev.map((s) => updates.find((u) => u.id === s.id) ?? s))
+  }, [])
+
+  const bulkDeleteStrokes = useCallback(async (ids) => {
+    const idSet = new Set(ids)
+    for (const id of ids) await deleteStroke(id)
+    setStrokes((prev) => prev.filter((s) => !idSet.has(s.id)))
+  }, [])
+
   const eraseAt = useCallback(async (x, y, radius = 20) => {
     const r2 = radius * radius
     const toRemove = strokes.filter((s) => {
@@ -191,6 +202,8 @@ export function useDrawing(pageId) {
     setColor,
     setStrokeSize,
     setEraserMode,
+    updateStrokes,
+    bulkDeleteStrokes,
     startStroke,
     addPoint,
     endStroke,

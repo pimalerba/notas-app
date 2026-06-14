@@ -10,6 +10,10 @@ const HIGHLIGHT_COLORS = [
   '#FFE500', '#72F272', '#5DD5FF', '#FFB0E0', '#FFAA22',
 ]
 
+const TEXT_COLORS = [
+  '#111827', '#2563eb', '#dc2626', '#16a34a', '#ea580c', '#7c3aed',
+]
+
 const PEN_SIZES = [
   { label: 'Fina',   visual: 6,  value: 2 },
   { label: 'Média',  visual: 11, value: 6 },
@@ -20,6 +24,13 @@ const HIGHLIGHT_SIZES = [
   { label: 'Fina',   visual: 8,  value: 12 },
   { label: 'Média',  visual: 14, value: 20 },
   { label: 'Grossa', visual: 20, value: 32 },
+]
+
+const FONT_SIZES = [12, 14, 16, 18, 24, 32]
+const FONT_FAMILIES = [
+  { value: 'sans',  label: 'Sans' },
+  { value: 'serif', label: 'Serif' },
+  { value: 'mono',  label: 'Mono' },
 ]
 
 // ── Ícones ────────────────────────────────────────────────────────────────────
@@ -68,12 +79,44 @@ function EraserIcon() {
   )
 }
 
+function LassoIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2.5 2">
+      <ellipse cx="8" cy="7" rx="5.5" ry="4" />
+      <path d="M8 11v3M6 12.5h4" strokeDasharray="none" />
+    </svg>
+  )
+}
+
+function TextIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 4h10M8 4v9" />
+      <path d="M5.5 13h5" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3.5h10M5 3.5V2.5h4v1M5.5 6v4.5M8.5 6v4.5M3 3.5l.8 8h6.4l.8-8" />
+    </svg>
+  )
+}
+
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function Toolbar({
   tool, color, strokeSize, eraserMode,
   onSetTool, onSetColor, onSetStrokeSize, onSetEraserMode,
   onBack,
+  // Lasso
+  lassoHasSelection,
+  onDeleteLassoSelection,
+  // Text element
+  selectedText,
+  onUpdateText,
 }) {
   const toolbarRef = useRef(null)
   const [pos, setPos] = useState({ x: 0, y: 20 })
@@ -116,8 +159,17 @@ export default function Toolbar({
 
   const isHighlight = tool === 'highlight'
   const isEraser    = tool === 'eraser'
+  const isLasso     = tool === 'lasso'
+  const isText      = tool === 'text'
   const colors      = isHighlight ? HIGHLIGHT_COLORS : PEN_COLORS
   const sizes       = isHighlight ? HIGHLIGHT_SIZES  : PEN_SIZES
+
+  // Text formatting section
+  const showTextFormat = isText && selectedText
+  const showLassoSection = isLasso
+  const showEraserModes = isEraser
+  const showColors = !isEraser && !isLasso && !isText && !showTextFormat
+  const showSizes = !isEraser && !isLasso && !isText
 
   return (
     <div
@@ -125,7 +177,7 @@ export default function Toolbar({
       className="toolbar"
       style={{ left: pos.x, top: pos.y }}
     >
-      {/* Alça de arraste */}
+      {/* Drag handle */}
       <div
         className="tb-handle"
         onPointerDown={onDragStart}
@@ -134,23 +186,26 @@ export default function Toolbar({
         onPointerCancel={onDragEnd}
       >⠿</div>
 
-      {/* Voltar */}
+      {/* Back */}
       <button className="tb-btn" onClick={onBack} title="Voltar à biblioteca">
         <BackIcon />
       </button>
 
       <div className="tb-sep" />
 
-      {/* Ferramentas */}
-      <button className={`tb-btn ${tool === 'pen'       ? 'active' : ''}`} onClick={() => pickTool('pen', 6)}        title="Caneta">        <PenIcon />       </button>
-      <button className={`tb-btn ${tool === 'brush'     ? 'active' : ''}`} onClick={() => pickTool('brush', 6)}      title="Pincel caligráfico"><BrushIcon />     </button>
-      <button className={`tb-btn ${tool === 'highlight' ? 'active' : ''}`} onClick={() => pickTool('highlight', 20)} title="Marcador">      <HighlightIcon /> </button>
-      <button className={`tb-btn ${tool === 'eraser'    ? 'active' : ''}`} onClick={() => pickTool('eraser', 20)}    title="Borracha">      <EraserIcon />    </button>
+      {/* Tools */}
+      <button className={`tb-btn ${tool === 'pen'       ? 'active' : ''}`} onClick={() => pickTool('pen', 6)}        title="Caneta">              <PenIcon />       </button>
+      <button className={`tb-btn ${tool === 'brush'     ? 'active' : ''}`} onClick={() => pickTool('brush', 6)}      title="Pincel caligráfico">  <BrushIcon />     </button>
+      <button className={`tb-btn ${tool === 'highlight' ? 'active' : ''}`} onClick={() => pickTool('highlight', 20)} title="Marcador">            <HighlightIcon /> </button>
+      <button className={`tb-btn ${tool === 'eraser'    ? 'active' : ''}`} onClick={() => pickTool('eraser', 20)}    title="Borracha">            <EraserIcon />    </button>
+      <button className={`tb-btn ${tool === 'lasso'     ? 'active' : ''}`} onClick={() => pickTool('lasso')}         title="Lasso">               <LassoIcon />     </button>
+      <button className={`tb-btn ${tool === 'text'      ? 'active' : ''}`} onClick={() => pickTool('text')}          title="Caixa de texto">      <TextIcon />      </button>
 
       <div className="tb-sep" />
 
-      {/* Seção adaptativa: cores ou modo borracha */}
-      {isEraser ? (
+      {/* ── Adaptive section ── */}
+
+      {showEraserModes && (
         <div className="tb-eraser-modes">
           <button
             className={`tb-emode ${eraserMode === 'stroke' ? 'active' : ''}`}
@@ -163,7 +218,77 @@ export default function Toolbar({
             title="Apagar só marcador"
           >Marcador</button>
         </div>
-      ) : (
+      )}
+
+      {showLassoSection && (
+        <div className="tb-lasso-section">
+          <button
+            className={`tb-action-btn ${!lassoHasSelection ? 'disabled' : ''}`}
+            onClick={lassoHasSelection ? onDeleteLassoSelection : undefined}
+            title="Deletar seleção"
+          >
+            <TrashIcon />
+            <span>Deletar</span>
+          </button>
+        </div>
+      )}
+
+      {showTextFormat && selectedText && (
+        <div className="tb-text-format">
+          {/* Font family */}
+          <select
+            className="tb-select"
+            value={selectedText.fontFamily}
+            onChange={(e) => onUpdateText(selectedText.id, { fontFamily: e.target.value })}
+          >
+            {FONT_FAMILIES.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+
+          {/* Font size */}
+          <select
+            className="tb-select tb-select-sm"
+            value={selectedText.fontSize}
+            onChange={(e) => onUpdateText(selectedText.id, { fontSize: Number(e.target.value) })}
+          >
+            {FONT_SIZES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+
+          {/* Bold */}
+          <button
+            className={`tb-fmt-btn ${selectedText.bold ? 'active' : ''}`}
+            onClick={() => onUpdateText(selectedText.id, { bold: !selectedText.bold })}
+            title="Negrito"
+          ><strong>B</strong></button>
+
+          {/* Italic */}
+          <button
+            className={`tb-fmt-btn ${selectedText.italic ? 'active' : ''}`}
+            onClick={() => onUpdateText(selectedText.id, { italic: !selectedText.italic })}
+            title="Itálico"
+          ><em>I</em></button>
+
+          <div className="tb-sep" style={{ height: 18 }} />
+
+          {/* Color swatches */}
+          <div className="tb-colors">
+            {TEXT_COLORS.map((c) => (
+              <button
+                key={c}
+                className={`tb-color ${c === selectedText.color ? 'active' : ''}`}
+                style={{ background: c }}
+                onClick={() => onUpdateText(selectedText.id, { color: c })}
+                title={c}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showColors && (
         <div className="tb-colors">
           {colors.map((c) => (
             <button
@@ -177,8 +302,8 @@ export default function Toolbar({
         </div>
       )}
 
-      {/* Espessura — oculta quando borracha está em modo destaque */}
-      {!isEraser && (
+      {/* Size selector — hidden for eraser/lasso/text */}
+      {showSizes && (
         <>
           <div className="tb-sep" />
           <div className="tb-sizes">
@@ -194,9 +319,7 @@ export default function Toolbar({
                   style={{
                     width: s.visual,
                     height: s.visual,
-                    background: isHighlight
-                      ? `${color}99`
-                      : tool === 'eraser' ? '#9aa5b4' : color,
+                    background: isHighlight ? `${color}99` : color,
                   }}
                 />
               </button>

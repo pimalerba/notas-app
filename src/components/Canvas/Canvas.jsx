@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { renderStrokes, renderStroke } from '../../utils/drawing.js'
+import { renderLassoOverlay } from '../../utils/lasso.js'
 import { makeDebouncedThumbnail } from '../../utils/thumbnail.js'
 import './Canvas.css'
 
@@ -30,10 +31,14 @@ export default function Canvas({
   tool,
   pdfDoc,
   pdfPageNum,
+  // Lasso props
+  lasso,
+  // Callbacks — drawing
   onStartStroke,
   onAddPoint,
   onEndStroke,
   onEraseAt,
+  // Thumbnail
   onThumbnailGenerated,
 }) {
   const wrapRef = useRef(null)
@@ -41,9 +46,10 @@ export default function Canvas({
   const pdfCanvasRef = useRef(null)
   const isDown = useRef(false)
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
+  const [lassoCursor, setLassoCursor] = useState('crosshair')
   const debouncedThumb = useRef(makeDebouncedThumbnail(1500))
 
-  // drawRef sempre aponta para a função de desenho com o closure mais recente
+  // drawRef always holds the freshest draw function
   const drawRef = useRef(null)
   useEffect(() => {
     drawRef.current = () => {
@@ -51,23 +57,48 @@ export default function Canvas({
       if (!canvas || canvas.width === 0 || canvas.height === 0) return
       const ctx = canvas.getContext('2d')
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      renderStrokes(ctx, strokes)
+
+      if (lasso && lasso.lassoState !== 'idle' && lasso.selectedIds?.size > 0) {
+        // Render non-selected strokes normally
+        const nonSelected = strokes.filter((s) => !lasso.selectedIds.has(s.id))
+        renderStrokes(ctx, nonSelected)
+
+        // Render selected strokes with move/resize transform applied
+        const selected = strokes.filter((s) => lasso.selectedIds.has(s.id))
+        if (selected.length > 0) {
+          ctx.save()
+          if (lasso.lassoState === 'moving' && lasso.moveOffset) {
+            const { dx, dy } = lasso.moveOffset
+            ctx.translate(dx, dy)
+          } else if (lasso.lassoState === 'resizing' && lasso.resizeTransform) {
+            const { anchorX, anchorY, scaleX, scaleY } = lasso.resizeTransform
+            ctx.translate(anchorX, anchorY)
+            ctx.scale(scaleX, scaleY)
+            ctx.translate(-anchorX, -anchorY)
+          }
+          renderStrokes(ctx, selected)
+          ctx.restore()
+        }
+      } else {
+        renderStrokes(ctx, strokes)
+      }
+
       if (liveStroke) renderStroke(ctx, liveStroke)
+
+      // Lasso overlay (path + bounding box + handles)
+      if (lasso) {
+        renderLassoOverlay(ctx, {
+          lassoState: lasso.lassoState,
+          path: lasso.path,
+          bb: lasso.bb,
+        })
+      }
     }
   })
 
-  // Redesenha quando o estado dos traços muda
-  useEffect(() => {
-    drawRef.current?.()
-  }, [strokes, liveStroke])
+  useEffect(() => { drawRef.current?.() }, [strokes, liveStroke, lasso])
 
-  // Gera miniatura debounced após mudança de traços
-  useEffect(() => {
-    if (!onThumbnailGenerated || !canvasSize.width || !strokes.length) return
-    debouncedThumb.current(strokes, canvasSize.width, canvasSize.height, onThumbnailGenerated)
-  }, [strokes, canvasSize, onThumbnailGenerated])
-
-  // Renderiza a página do PDF no canvas de fundo
+  // PDF background rendering
   useEffect(() => {
     const pdfCanvas = pdfCanvasRef.current
     const drawCanvas = canvasRef.current
@@ -94,13 +125,10 @@ export default function Canvas({
       if (!cancelled) console.error('[PDF render]', err)
     })
 
-    return () => {
-      cancelled = true
-      renderTask?.cancel()
-    }
+    return () => { cancelled = true; renderTask?.cancel() }
   }, [pdfDoc, pdfPageNum, canvasSize])
 
-  // Mantém as dimensões do canvas sincronizadas com o layout
+  // Sync canvas size to container
   useEffect(() => {
     const wrap = wrapRef.current
     if (!wrap) return
@@ -111,7 +139,6 @@ export default function Canvas({
 
       const canvas = canvasRef.current
       if (canvas) { canvas.width = w; canvas.height = h }
-
       const pdfCanvas = pdfCanvasRef.current
       if (pdfCanvas) { pdfCanvas.width = w; pdfCanvas.height = h }
 
@@ -122,43 +149,84 @@ export default function Canvas({
     return () => obs.disconnect()
   }, [])
 
+  // Thumbnail generation
+  useEffect(() => {
+    if (!onThumbnailGenerated || !canvasSize.width || !strokes.length) return
+    debouncedThumb.current(strokes, canvasSize.width, canvasSize.height, onThumbnailGenerated)
+  }, [strokes, canvasSize, onThumbnailGenerated])
+
+  // ── Pointer event helpers ──────────────────────────────────────────────────
+
   function coords(e) {
     const r = canvasRef.current.getBoundingClientRect()
-    return {
-      x: e.clientX - r.left,
-      y: e.clientY - r.top,
-      p: e.pressure > 0 ? e.pressure : 0.5,
-    }
+    return { x: e.clientX - r.left, y: e.clientY - r.top, p: e.pressure > 0 ? e.pressure : 0.5 }
   }
 
+  const isDrawingTool = tool === 'pen' || tool === 'brush' || tool === 'highlight' || tool === 'eraser'
+  const isLassoTool = tool === 'lasso'
+
   function handlePointerDown(e) {
+    if (tool === 'text') return // TextLayer handles this
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch {}
     isDown.current = true
     const { x, y, p } = coords(e)
-    if (tool === 'eraser') onEraseAt(x, y)
-    else onStartStroke(x, y, p)
+
+    if (isLassoTool && lasso) {
+      lasso.pointerDown(x, y)
+      return
+    }
+
+    if (isDrawingTool) {
+      if (tool === 'eraser') onEraseAt(x, y)
+      else onStartStroke(x, y, p)
+    }
   }
 
   function handlePointerMove(e) {
-    if (!isDown.current) return
+    if (!isDown.current && tool !== 'lasso') return
     const { x, y, p } = coords(e)
-    if (tool === 'eraser') onEraseAt(x, y)
-    else onAddPoint(x, y, p)
+
+    if (isLassoTool && lasso) {
+      if (isDown.current) lasso.pointerMove(x, y)
+      // Update cursor based on position
+      setLassoCursor(lasso.getCursorForPos(x, y))
+      return
+    }
+
+    if (!isDown.current) return
+    if (isDrawingTool) {
+      if (tool === 'eraser') onEraseAt(x, y)
+      else onAddPoint(x, y, p)
+    }
   }
 
-  function handlePointerUp() {
+  function handlePointerUp(e) {
     if (!isDown.current) return
     isDown.current = false
-    if (tool !== 'eraser') onEndStroke()
+    const { x, y } = coords(e)
+
+    if (isLassoTool && lasso) {
+      lasso.pointerUp(strokes)
+      return
+    }
+
+    if (isDrawingTool && tool !== 'eraser') onEndStroke()
   }
 
   const paperStyle = PAPER_STYLE[paperType] ?? {}
 
+  let cursorClass = 'tool-pen'
+  if (tool === 'eraser') cursorClass = 'tool-eraser'
+  else if (tool === 'lasso') cursorClass = 'tool-lasso'
+  else if (tool === 'text') cursorClass = 'tool-text'
+
+  const extraStyle = tool === 'lasso' ? { cursor: lassoCursor } : {}
+
   return (
     <div
       ref={wrapRef}
-      className={`canvas-wrap ${tool === 'eraser' ? 'tool-eraser' : 'tool-pen'}`}
-      style={{ background: '#ffffff', ...paperStyle }}
+      className={`canvas-wrap ${cursorClass}`}
+      style={{ background: '#ffffff', ...paperStyle, ...extraStyle }}
     >
       <canvas
         ref={pdfCanvasRef}

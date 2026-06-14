@@ -1,7 +1,7 @@
 import { openDB } from 'idb'
 
 const DB_NAME = 'notas-db'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 let dbPromise = null
 
@@ -36,6 +36,12 @@ function getDB() {
           // Dados binários dos PDFs ficam isolados do restante
           db.createObjectStore('pdfs', { keyPath: 'id' })
         }
+
+        // ── v3: elementos de texto por página ─────────────────────────────────
+        if (oldVersion < 3) {
+          const texts = db.createObjectStore('texts', { keyPath: 'id' })
+          texts.createIndex('pageId', 'pageId')
+        }
       },
     })
   }
@@ -61,16 +67,18 @@ export async function putNotebook(notebook) {
 
 export async function deleteNotebook(id) {
   const db = await getDB()
-  const tx = db.transaction(['notebooks', 'pages', 'strokes', 'pdfs'], 'readwrite')
+  const tx = db.transaction(['notebooks', 'pages', 'strokes', 'pdfs', 'texts'], 'readwrite')
 
   const pages = await tx.objectStore('pages').index('notebookId').getAll(id)
   for (const page of pages) {
     const strokes = await tx.objectStore('strokes').index('pageId').getAll(page.id)
     for (const stroke of strokes) tx.objectStore('strokes').delete(stroke.id)
+    const texts = await tx.objectStore('texts').index('pageId').getAll(page.id)
+    for (const t of texts) tx.objectStore('texts').delete(t.id)
     tx.objectStore('pages').delete(page.id)
   }
   tx.objectStore('notebooks').delete(id)
-  tx.objectStore('pdfs').delete(id) // no-op se não for PDF
+  tx.objectStore('pdfs').delete(id)
 
   await tx.done
 }
@@ -116,10 +124,12 @@ export async function putPage(page) {
 
 export async function deletePage(id) {
   const db = await getDB()
-  const tx = db.transaction(['pages', 'strokes'], 'readwrite')
+  const tx = db.transaction(['pages', 'strokes', 'texts'], 'readwrite')
 
   const strokes = await tx.objectStore('strokes').index('pageId').getAll(id)
   for (const stroke of strokes) tx.objectStore('strokes').delete(stroke.id)
+  const texts = await tx.objectStore('texts').index('pageId').getAll(id)
+  for (const t of texts) tx.objectStore('texts').delete(t.id)
   tx.objectStore('pages').delete(id)
 
   await tx.done
@@ -161,4 +171,21 @@ export async function getPdfData(id) {
   const db = await getDB()
   const record = await db.get('pdfs', id)
   return record?.data ?? null
+}
+
+// ─── Texts ────────────────────────────────────────────────────────────────────
+
+export async function getTextElements(pageId) {
+  const db = await getDB()
+  return db.getAllFromIndex('texts', 'pageId', pageId)
+}
+
+export async function putTextElement(el) {
+  const db = await getDB()
+  await db.put('texts', el)
+}
+
+export async function deleteTextElement(id) {
+  const db = await getDB()
+  await db.delete('texts', id)
 }

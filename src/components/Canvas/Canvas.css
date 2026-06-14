@@ -6,6 +6,8 @@
 
 .tool-pen    { cursor: crosshair; }
 .tool-eraser { cursor: cell; }
+.tool-lasso  { cursor: crosshair; }
+.tool-text   { cursor: text; }
 
 .drawing-canvas {
   position: absolute;
