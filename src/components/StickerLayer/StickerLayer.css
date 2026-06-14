@@ -1,0 +1,71 @@
+.sticker-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ── Instância de adesivo ─────────────────────────────────────────────────── */
+
+.si-el {
+  position: absolute;
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+  border: 1.5px solid transparent;
+  border-radius: 2px;
+  transition: border-color 80ms;
+}
+
+.si-el:hover { border-color: rgba(59, 130, 246, 0.4); }
+.si-el.selected { border-color: #3B82F6; }
+.si-el.dragging { opacity: 0.85; }
+
+.si-el img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+/* ── Botão deletar ───────────────────────────────────────────────────────── */
+
+.si-delete {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid #E5E7EB;
+  background: white;
+  color: #6B7280;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  transition: background 80ms, color 80ms;
+}
+
+.si-delete:hover { background: #FEE2E2; color: #DC2626; border-color: #DC2626; }
+
+/* ── Handles de redimensionamento ────────────────────────────────────────── */
+
+.si-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: white;
+  border: 2px solid #3B82F6;
+  box-sizing: border-box;
+  touch-action: none;
+}
+
+.si-handle-nw { top: -5px;    left: -5px;   cursor: nw-resize; }
+.si-handle-ne { top: -5px;    right: -5px;  cursor: ne-resize; }
+.si-handle-sw { bottom: -5px; left: -5px;   cursor: sw-resize; }
+.si-handle-se { bottom: -5px; right: -5px;  cursor: se-resize; }

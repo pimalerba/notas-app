@@ -4,11 +4,15 @@ import { usePages } from '../../hooks/usePages.js'
 import { useDrawing } from '../../hooks/useDrawing.js'
 import { useLasso } from '../../hooks/useLasso.js'
 import { useTextElements } from '../../hooks/useTextElements.js'
+import { useStickers } from '../../hooks/useStickers.js'
+import { useStickerInstances } from '../../hooks/useStickerInstances.js'
 import { openPdf } from '../../utils/pdf.js'
 import Canvas from '../Canvas/Canvas.jsx'
 import Toolbar from '../Toolbar/Toolbar.jsx'
 import PagePanel from '../PagePanel/PagePanel.jsx'
 import TextLayer from '../TextLayer/TextLayer.jsx'
+import StickerLayer from '../StickerLayer/StickerLayer.jsx'
+import StickerPanel from '../StickerPanel/StickerPanel.jsx'
 import './Editor.css'
 
 export default function Editor({ notebookId, onBack }) {
@@ -64,7 +68,7 @@ export default function Editor({ notebookId, onBack }) {
     startStroke, addPoint, endStroke, eraseAt,
   } = useDrawing(activePage?.id)
 
-  // Lasso — clear selection when tool changes away from lasso
+  // Lasso
   const lasso = useLasso(strokes, updateStrokes, bulkDeleteStrokes)
   const prevToolRef = useRef(tool)
   useEffect(() => {
@@ -78,7 +82,28 @@ export default function Editor({ notebookId, onBack }) {
     setSelectedTextId, createText, updateText, removeText,
   } = useTextElements(activePage?.id)
 
-  // Delete key: delete lasso selection or selected text element
+  // Sticker library (global, not per-page)
+  const { stickers, importSticker, removeSticker } = useStickers()
+
+  // Sticker instances (per page)
+  const {
+    instances: stickerInstances,
+    selectedId: selectedStickerId,
+    setSelectedId: setSelectedStickerId,
+    placeSticker,
+    updateInstance: updateStickerInstance,
+    removeInstance: removeStickerInstance,
+  } = useStickerInstances(activePage?.id)
+
+  const [armedSticker, setArmedSticker] = useState(null) // sticker definition ready to place
+  const [showStickerPanel, setShowStickerPanel] = useState(false)
+
+  function handleStickerSelect(sticker) {
+    setArmedSticker(sticker)
+    setTool('sticker')
+  }
+
+  // Delete key handler
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -92,12 +117,15 @@ export default function Editor({ notebookId, onBack }) {
         } else if (selectedTextId) {
           e.preventDefault()
           removeText(selectedTextId)
+        } else if (selectedStickerId) {
+          e.preventDefault()
+          removeStickerInstance(selectedStickerId)
         }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [tool, lasso, selectedTextId, removeText])
+  }, [tool, lasso, selectedTextId, removeText, selectedStickerId, removeStickerInstance])
 
   const handleThumbnailGenerated = useCallback((dataUrl) => {
     if (activePage) updateThumbnail(activePage.id, dataUrl)
@@ -130,6 +158,8 @@ export default function Editor({ notebookId, onBack }) {
           selectedText={selectedText}
           onUpdateText={updateText}
           onDeleteSelectedText={() => selectedTextId && removeText(selectedTextId)}
+          stickerPanelOpen={showStickerPanel}
+          onToggleStickerPanel={() => setShowStickerPanel((v) => !v)}
         />
         <Canvas
           paperType={notebook?.paperType ?? 'blank'}
@@ -154,6 +184,30 @@ export default function Editor({ notebookId, onBack }) {
           onUpdateText={updateText}
           onDeleteText={removeText}
         />
+        <StickerLayer
+          instances={stickerInstances}
+          stickers={stickers}
+          selectedId={selectedStickerId}
+          tool={tool}
+          armedSticker={armedSticker}
+          onPlace={(sticker, x, y) => {
+            placeSticker(sticker, x, y)
+            setArmedSticker(null)
+            setTool('pen')
+          }}
+          onSelect={setSelectedStickerId}
+          onUpdate={updateStickerInstance}
+          onDelete={removeStickerInstance}
+        />
+        {showStickerPanel && (
+          <StickerPanel
+            stickers={stickers}
+            onImport={importSticker}
+            onSelect={handleStickerSelect}
+            onRemove={removeSticker}
+            onClose={() => setShowStickerPanel(false)}
+          />
+        )}
       </div>
     </div>
   )

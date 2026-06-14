@@ -105,6 +105,18 @@ function TrashIcon() {
   )
 }
 
+function StickerIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 2a6 6 0 1 1 0 12" />
+      <path d="M8 8a6 6 0 0 0 6 6" />
+      <circle cx="5.5" cy="6" r="1" fill="currentColor" stroke="none" />
+      <circle cx="8" cy="5" r="1" fill="currentColor" stroke="none" />
+      <path d="M5 10c.5 1 1.5 1.5 3 1.5" />
+    </svg>
+  )
+}
+
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function Toolbar({
@@ -118,6 +130,9 @@ export default function Toolbar({
   selectedText,
   onUpdateText,
   onDeleteSelectedText,
+  // Sticker panel toggle
+  stickerPanelOpen,
+  onToggleStickerPanel,
 }) {
   const toolbarRef = useRef(null)
   const [pos, setPos] = useState({ x: 0, y: 20 })
@@ -203,6 +218,7 @@ export default function Toolbar({
       <button className={`tb-btn ${tool === 'eraser'    ? 'active' : ''}`} onClick={() => pickTool('eraser', 20)}    title="Borracha">            <EraserIcon />    </button>
       <button className={`tb-btn ${tool === 'lasso'     ? 'active' : ''}`} onClick={() => pickTool('lasso')}         title="Lasso">               <LassoIcon />     </button>
       <button className={`tb-btn ${tool === 'text'      ? 'active' : ''}`} onClick={() => pickTool('text')}          title="Caixa de texto">      <TextIcon />      </button>
+      <button className={`tb-btn ${stickerPanelOpen || tool === 'sticker' ? 'active' : ''}`} onClick={onToggleStickerPanel} title="Adesivos"><StickerIcon /></button>
 
       <div className="tb-sep" />
 

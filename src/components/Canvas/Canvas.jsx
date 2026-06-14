@@ -164,9 +164,10 @@ export default function Canvas({
 
   const isDrawingTool = tool === 'pen' || tool === 'brush' || tool === 'highlight' || tool === 'eraser'
   const isLassoTool = tool === 'lasso'
+  const isStickerTool = tool === 'sticker'
 
   function handlePointerDown(e) {
-    if (tool === 'text') return // TextLayer handles this
+    if (tool === 'text' || isStickerTool) return // TextLayer / StickerLayer handles this
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch {}
     isDown.current = true
     const { x, y, p } = coords(e)
@@ -219,6 +220,7 @@ export default function Canvas({
   if (tool === 'eraser') cursorClass = 'tool-eraser'
   else if (tool === 'lasso') cursorClass = 'tool-lasso'
   else if (tool === 'text') cursorClass = 'tool-text'
+  else if (isStickerTool) cursorClass = 'tool-sticker'
 
   const extraStyle = tool === 'lasso' ? { cursor: lassoCursor } : {}
 

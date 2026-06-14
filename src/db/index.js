@@ -1,7 +1,7 @@
 import { openDB } from 'idb'
 
 const DB_NAME = 'notas-db'
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 let dbPromise = null
 
@@ -42,6 +42,14 @@ function getDB() {
           const texts = db.createObjectStore('texts', { keyPath: 'id' })
           texts.createIndex('pageId', 'pageId')
         }
+
+        // ── v4: biblioteca de adesivos + instâncias por página ────────────────
+        if (oldVersion < 4) {
+          db.createObjectStore('stickers', { keyPath: 'id' })
+
+          const pageStickers = db.createObjectStore('pageStickers', { keyPath: 'id' })
+          pageStickers.createIndex('pageId', 'pageId')
+        }
       },
     })
   }
@@ -67,7 +75,7 @@ export async function putNotebook(notebook) {
 
 export async function deleteNotebook(id) {
   const db = await getDB()
-  const tx = db.transaction(['notebooks', 'pages', 'strokes', 'pdfs', 'texts'], 'readwrite')
+  const tx = db.transaction(['notebooks', 'pages', 'strokes', 'pdfs', 'texts', 'pageStickers'], 'readwrite')
 
   const pages = await tx.objectStore('pages').index('notebookId').getAll(id)
   for (const page of pages) {
@@ -75,6 +83,8 @@ export async function deleteNotebook(id) {
     for (const stroke of strokes) tx.objectStore('strokes').delete(stroke.id)
     const texts = await tx.objectStore('texts').index('pageId').getAll(page.id)
     for (const t of texts) tx.objectStore('texts').delete(t.id)
+    const psi = await tx.objectStore('pageStickers').index('pageId').getAll(page.id)
+    for (const s of psi) tx.objectStore('pageStickers').delete(s.id)
     tx.objectStore('pages').delete(page.id)
   }
   tx.objectStore('notebooks').delete(id)
@@ -124,12 +134,14 @@ export async function putPage(page) {
 
 export async function deletePage(id) {
   const db = await getDB()
-  const tx = db.transaction(['pages', 'strokes', 'texts'], 'readwrite')
+  const tx = db.transaction(['pages', 'strokes', 'texts', 'pageStickers'], 'readwrite')
 
   const strokes = await tx.objectStore('strokes').index('pageId').getAll(id)
   for (const stroke of strokes) tx.objectStore('strokes').delete(stroke.id)
   const texts = await tx.objectStore('texts').index('pageId').getAll(id)
   for (const t of texts) tx.objectStore('texts').delete(t.id)
+  const psi = await tx.objectStore('pageStickers').index('pageId').getAll(id)
+  for (const s of psi) tx.objectStore('pageStickers').delete(s.id)
   tx.objectStore('pages').delete(id)
 
   await tx.done
@@ -188,4 +200,38 @@ export async function putTextElement(el) {
 export async function deleteTextElement(id) {
   const db = await getDB()
   await db.delete('texts', id)
+}
+
+// ─── Stickers (biblioteca global) ─────────────────────────────────────────────
+
+export async function getAllStickers() {
+  const db = await getDB()
+  return db.getAll('stickers')
+}
+
+export async function putSticker(sticker) {
+  const db = await getDB()
+  await db.put('stickers', sticker)
+}
+
+export async function deleteSticker(id) {
+  const db = await getDB()
+  await db.delete('stickers', id)
+}
+
+// ─── Page sticker instances ────────────────────────────────────────────────────
+
+export async function getPageStickerInstances(pageId) {
+  const db = await getDB()
+  return db.getAllFromIndex('pageStickers', 'pageId', pageId)
+}
+
+export async function putPageStickerInstance(inst) {
+  const db = await getDB()
+  await db.put('pageStickers', inst)
+}
+
+export async function deletePageStickerInstance(id) {
+  const db = await getDB()
+  await db.delete('pageStickers', id)
 }
