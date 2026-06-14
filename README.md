@@ -3,7 +3,7 @@
 > A GoodNotes-inspired digital notebook for iPad and desktop — built entirely with React, no native code required.
 
 [![Live Demo](https://img.shields.io/badge/live%20demo-notas--app.vercel.app-4d94e0?style=flat-square&logo=vercel&logoColor=white)](https://notas-app-mu.vercel.app)
-[![PWA Ready](https://img.shields.io/badge/PWA-ready-5cb85c?style=flat-square)](https://notas-app-mu.vercel.app)
+[![PWA Ready](https://img.shields.io/badge/PWA-ready-5cb85c?style=flat-square)](https://notas-app-alpha.vercel.app)
 [![React 19](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-8-646cff?style=flat-square&logo=vite&logoColor=white)](https://vite.dev)
 
