@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { getPdfData } from '../../db/index.js'
+import { openPdf, renderPdfCoverThumb } from '../../utils/pdf.js'
 import ConfirmDialog from '../ui/ConfirmDialog.jsx'
 import './NotebookCover.css'
 
@@ -37,11 +39,32 @@ export default function NotebookCover({
   onDelete,
   onRenameSubmit,
   onRenameCancel,
+  onThumbGenerated,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [draft, setDraft] = useState(notebook.title)
+  const [generatedThumb, setGeneratedThumb] = useState(null)
   const inputRef = useRef(null)
+
+  // Lazy thumbnail generation for PDFs imported before this feature existed
+  useEffect(() => {
+    const isPdf = notebook.type === 'pdf'
+    if (!isPdf || notebook.coverThumb || generatedThumb) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const buf = await getPdfData(notebook.id)
+        if (!buf || cancelled) return
+        const pdfDoc = await openPdf(buf)
+        const dataUrl = await renderPdfCoverThumb(pdfDoc)
+        if (cancelled) return
+        setGeneratedThumb(dataUrl)
+        onThumbGenerated?.(dataUrl)
+      } catch { /* silently skip if PDF data is missing */ }
+    })()
+    return () => { cancelled = true }
+  }, [notebook.id, notebook.type, notebook.coverThumb, generatedThumb, onThumbGenerated])
 
   useEffect(() => {
     if (isRenaming) {
@@ -70,6 +93,7 @@ export default function NotebookCover({
   }
 
   const isPdf = notebook.type === 'pdf'
+  const thumbSrc = notebook.coverThumb || generatedThumb
 
   return (
     <>
@@ -80,9 +104,12 @@ export default function NotebookCover({
 
       <div
         className="nb-cover"
-        style={{ background: notebook.coverColor }}
+        style={{ background: thumbSrc ? undefined : notebook.coverColor }}
         title={notebook.title}
       >
+        {thumbSrc && (
+          <img className="nb-cover-thumb" src={thumbSrc} alt="" aria-hidden="true" />
+        )}
         {isPdf && (
           <div className="nb-pdf-badge">PDF</div>
         )}

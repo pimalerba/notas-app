@@ -114,7 +114,7 @@ function EmptyState({ onCreateNotebook }) {
 export default function Library({ onOpenNotebook }) {
   const {
     notebooks, loading: nbLoading,
-    createNotebook, createPdf, renameNotebook, removeNotebook, moveToFolder, refresh,
+    createNotebook, createPdf, renameNotebook, removeNotebook, moveToFolder, refresh, updateNotebookThumb,
   } = useNotebooks()
 
   const {
@@ -280,6 +280,7 @@ export default function Library({ onOpenNotebook }) {
                 onDelete={() => removeNotebook(nb.id)}
                 onRenameSubmit={(title) => submitRename(nb.id, false, title)}
                 onRenameCancel={() => setRenamingId(null)}
+                onThumbGenerated={(dataUrl) => updateNotebookThumb(nb.id, dataUrl)}
               />
             ))}
           </div>

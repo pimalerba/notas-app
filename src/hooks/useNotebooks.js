@@ -7,7 +7,7 @@ import {
   getPdfData,
   putPage,
 } from '../db/index.js'
-import { openPdf } from '../utils/pdf.js'
+import { openPdf, renderPdfCoverThumb } from '../utils/pdf.js'
 
 function makeId(prefix = 'nb') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
@@ -70,6 +70,7 @@ export function useNotebooks() {
       title: file.name.replace(/\.pdf$/i, ''),
       type: 'pdf',
       coverColor: '#e8eef6',
+      coverThumb: null,
       folderId,
       fileSize: file.size,
       createdAt: now,
@@ -79,10 +80,23 @@ export function useNotebooks() {
     await putPdfData(notebook.id, arrayBuffer)
     setNotebooks((prev) => [notebook, ...prev])
 
-    // Usa a cópia salva no DB para evitar problemas com ArrayBuffer detached
     try {
       const storedBuf = await getPdfData(notebook.id)
       const pdfDoc = await openPdf(storedBuf)
+
+      // Gera thumbnail da capa (página 1) e salva no registro do caderno
+      let coverThumb = null
+      try {
+        coverThumb = await renderPdfCoverThumb(pdfDoc)
+      } catch (e) {
+        console.error('[createPdf] falha ao gerar thumbnail:', e)
+      }
+      if (coverThumb) {
+        const updated = { ...notebook, coverThumb }
+        await putNotebook(updated)
+        setNotebooks((prev) => prev.map((nb) => nb.id === notebook.id ? updated : nb))
+      }
+
       const numPages = pdfDoc.numPages
       for (let i = 0; i < numPages; i++) {
         await putPage({
@@ -95,10 +109,21 @@ export function useNotebooks() {
         })
       }
     } catch (e) {
-      console.error('[createPdf] falha ao criar páginas:', e)
+      console.error('[createPdf] falha ao processar PDF:', e)
     }
 
     return notebook
+  }, [])
+
+  const updateNotebookThumb = useCallback(async (id, coverThumb) => {
+    setNotebooks((prev) =>
+      prev.map((nb) => {
+        if (nb.id !== id) return nb
+        const updated = { ...nb, coverThumb }
+        putNotebook(updated)
+        return updated
+      })
+    )
   }, [])
 
   const renameNotebook = useCallback(async (id, title) => {
@@ -148,6 +173,7 @@ export function useNotebooks() {
     renameNotebook,
     removeNotebook,
     moveToFolder,
+    updateNotebookThumb,
     touchNotebook,
   }
 }

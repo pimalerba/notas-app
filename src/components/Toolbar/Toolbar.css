@@ -224,6 +224,51 @@
 .tb-emode:hover  { background: var(--gray-100); color: var(--text-primary); }
 .tb-emode.active { background: var(--blue-100); color: var(--blue-500); }
 
+/* ── Orientação vertical ─────────────────────────────────────────────────── */
+
+.toolbar.vertical {
+  flex-direction: column;
+  padding: 8px 6px;
+  border-radius: var(--radius-lg);
+  align-items: center;
+}
+
+.toolbar.vertical .tb-sep {
+  width: 24px;
+  height: 1px;
+  margin: 3px 0;
+}
+
+.toolbar.vertical .tb-sizes {
+  flex-direction: column;
+  gap: 1px;
+}
+
+.toolbar.vertical .tb-eraser-modes {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toolbar.vertical .tb-colors {
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 46px;
+  gap: 4px;
+}
+
+.toolbar.vertical .tb-lasso-section,
+.toolbar.vertical .tb-text-format {
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.toolbar.vertical .tb-text-format .tb-sep {
+  width: 24px;
+  height: 1px;
+  margin: 1px 0;
+}
+
 /* ── Menu de exportar ───────────────────────────────────────────────────── */
 
 .tb-export-menu {

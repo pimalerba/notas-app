@@ -1,6 +1,18 @@
 import { useState, useRef, useLayoutEffect, useEffect } from 'react'
 import './Toolbar.css'
 
+const STORAGE_KEY = 'notas-toolbar'
+
+function readStorage() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || {} }
+  catch { return {} }
+}
+
+function writeStorage(x, y, vertical) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ x, y, vertical })) }
+  catch { /* quota exceeded or private mode */ }
+}
+
 const PEN_COLORS = [
   '#111827', '#2563eb', '#dc2626', '#16a34a',
   '#ea580c', '#7c3aed', '#0891b2', '#6b7280',
@@ -34,6 +46,15 @@ const FONT_FAMILIES = [
 ]
 
 // ── Ícones ────────────────────────────────────────────────────────────────────
+
+function RotateIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.5 7A4.5 4.5 0 1 0 4 3.2" />
+      <path d="M4 1v3H1" />
+    </svg>
+  )
+}
 
 function BackIcon() {
   return (
@@ -203,9 +224,18 @@ export default function Toolbar({
   onTogglePencilOnly,
 }) {
   const toolbarRef = useRef(null)
-  const [pos, setPos] = useState({ x: 0, y: 20 })
+  const [pos, setPos] = useState(() => {
+    const s = readStorage()
+    return s.x != null ? { x: s.x, y: s.y } : { x: 0, y: 20 }
+  })
+  const [vertical, setVertical] = useState(() => readStorage().vertical ?? false)
   const isDragging = useRef(false)
   const drag = useRef({ mx: 0, my: 0, tx: 0, ty: 0 })
+
+  // Persist state whenever pos or orientation changes
+  useEffect(() => {
+    writeStorage(pos.x, pos.y, vertical)
+  }, [pos, vertical])
 
   const [showExportMenu, setShowExportMenu] = useState(false)
   const exportBtnRef = useRef(null)
@@ -237,6 +267,8 @@ export default function Toolbar({
   }
 
   useLayoutEffect(() => {
+    // Only auto-center when no saved position
+    if (readStorage().x != null) return
     const el = toolbarRef.current
     if (!el) return
     setPos({ x: Math.max(16, (window.innerWidth - el.offsetWidth) / 2), y: 20 })
@@ -265,6 +297,21 @@ export default function Toolbar({
 
   function onDragEnd() { isDragging.current = false }
 
+  function toggleVertical() {
+    setVertical((v) => {
+      // After the DOM updates with the new orientation, clamp position to viewport
+      requestAnimationFrame(() => {
+        const el = toolbarRef.current
+        if (!el) return
+        setPos((p) => ({
+          x: Math.max(0, Math.min(p.x, window.innerWidth  - el.offsetWidth)),
+          y: Math.max(0, Math.min(p.y, window.innerHeight - el.offsetHeight)),
+        }))
+      })
+      return !v
+    })
+  }
+
   function pickTool(t, defaultSize) {
     onSetTool(t)
     if (defaultSize !== undefined) onSetStrokeSize(defaultSize)
@@ -292,10 +339,20 @@ export default function Toolbar({
     <>
     <div
       ref={toolbarRef}
-      className="toolbar"
+      className={`toolbar${vertical ? ' vertical' : ''}`}
       style={{ left: pos.x, top: pos.y }}
     >
-      {/* Drag handle */}
+      {/* Rotate orientation — always first */}
+      <button
+        className="tb-btn tb-rotate"
+        onClick={toggleVertical}
+        title={vertical ? 'Modo horizontal' : 'Modo vertical'}
+        aria-label={vertical ? 'Modo horizontal' : 'Modo vertical'}
+      >
+        <RotateIcon />
+      </button>
+
+      {/* Drag handle — second */}
       <div
         className="tb-handle"
         onPointerDown={onDragStart}
