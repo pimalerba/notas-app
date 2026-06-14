@@ -1,0 +1,184 @@
+.page-panel {
+  width: 96px;
+  flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+  overflow: hidden;
+  z-index: var(--z-raised);
+}
+
+/* ── Lista de páginas ────────────────────────────────────────────────────── */
+
+.pp-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-300) transparent;
+}
+
+.pp-list::-webkit-scrollbar { width: 4px; }
+.pp-list::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 2px; }
+
+/* ── Item de página ──────────────────────────────────────────────────────── */
+
+.pp-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  transition: background var(--duration-fast);
+}
+
+.pp-item:hover { background: rgba(0,0,0,0.04); }
+
+.pp-item.active .pp-thumb {
+  box-shadow: 0 0 0 2.5px var(--accent);
+}
+
+.pp-item.drag-over {
+  border-top: 2.5px solid var(--accent);
+  margin-top: -2.5px;
+}
+
+.pp-item.dragging {
+  opacity: 0.4;
+}
+
+/* ── Miniatura ───────────────────────────────────────────────────────────── */
+
+.pp-thumb {
+  position: relative;
+  width: 72px;
+  height: 54px;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+
+.pp-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pp-blank {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+}
+
+/* ── Botão "..." ─────────────────────────────────────────────────────────── */
+
+.pp-more {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-xs);
+  border: none;
+  background: rgba(255,255,255,0.9);
+  color: var(--gray-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-fast), background var(--duration-fast);
+  padding: 0;
+}
+
+.pp-thumb:hover .pp-more,
+.pp-item.active .pp-more { opacity: 1; }
+.pp-more:hover { background: white; color: var(--gray-700); }
+
+/* ── Número de página ────────────────────────────────────────────────────── */
+
+.pp-num {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.pp-item.active .pp-num {
+  color: var(--accent);
+}
+
+/* ── Botão adicionar página ──────────────────────────────────────────────── */
+
+.pp-add {
+  flex-shrink: 0;
+  margin: 6px 8px 10px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--border-default);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast);
+}
+
+.pp-add:hover {
+  background: var(--blue-50);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Menu de contexto ────────────────────────────────────────────────────── */
+
+.pp-menu {
+  position: fixed;
+  z-index: var(--z-modal);
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(0,0,0,0.07);
+  padding: 4px;
+  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pp-menu button {
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.pp-menu button:hover { background: var(--gray-100); }
+
+.pp-menu button.disabled {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.pp-menu button.disabled:hover { background: none; }

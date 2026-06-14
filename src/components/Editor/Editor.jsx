@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getNotebook, getPdfData, putPage } from '../../db/index.js'
 import { usePages } from '../../hooks/usePages.js'
 import { useDrawing } from '../../hooks/useDrawing.js'
 import { openPdf } from '../../utils/pdf.js'
 import Canvas from '../Canvas/Canvas.jsx'
 import Toolbar from '../Toolbar/Toolbar.jsx'
+import PagePanel from '../PagePanel/PagePanel.jsx'
 import './Editor.css'
 
 export default function Editor({ notebookId, onBack }) {
@@ -25,7 +26,11 @@ export default function Editor({ notebookId, onBack }) {
     return () => { cancelled = true }
   }, [notebook])
 
-  const { pages, activePage, loading: pagesLoading, createPage, reloadPages } = usePages(notebookId)
+  const {
+    pages, activePage, loading: pagesLoading,
+    createPage, removePage, duplicatePage, reorderPages,
+    setActivePageId, updateThumbnail, reloadPages,
+  } = usePages(notebookId)
 
   // Cria a primeira página apenas para cadernos normais (PDFs já têm páginas)
   useEffect(() => {
@@ -57,31 +62,47 @@ export default function Editor({ notebookId, onBack }) {
     startStroke, addPoint, endStroke, eraseAt,
   } = useDrawing(activePage?.id)
 
+  const handleThumbnailGenerated = useCallback((dataUrl) => {
+    if (activePage) updateThumbnail(activePage.id, dataUrl)
+  }, [activePage, updateThumbnail])
+
   return (
     <div className="editor">
-      <Toolbar
-        tool={tool}
-        color={color}
-        strokeSize={strokeSize}
-        eraserMode={eraserMode}
-        onSetTool={setTool}
-        onSetColor={setColor}
-        onSetStrokeSize={setStrokeSize}
-        onSetEraserMode={setEraserMode}
-        onBack={onBack}
+      <PagePanel
+        pages={pages}
+        activePageId={activePage?.id ?? null}
+        onSelectPage={setActivePageId}
+        onAddPage={createPage}
+        onDuplicatePage={duplicatePage}
+        onDeletePage={removePage}
+        onReorderPages={reorderPages}
       />
-      <Canvas
-        paperType={notebook?.paperType ?? 'blank'}
-        strokes={strokes}
-        liveStroke={liveStroke}
-        tool={tool}
-        pdfDoc={pdfDoc}
-        pdfPageNum={activePage?.pdfPageNum ?? null}
-        onStartStroke={startStroke}
-        onAddPoint={addPoint}
-        onEndStroke={endStroke}
-        onEraseAt={eraseAt}
-      />
+      <div className="editor-main">
+        <Toolbar
+          tool={tool}
+          color={color}
+          strokeSize={strokeSize}
+          eraserMode={eraserMode}
+          onSetTool={setTool}
+          onSetColor={setColor}
+          onSetStrokeSize={setStrokeSize}
+          onSetEraserMode={setEraserMode}
+          onBack={onBack}
+        />
+        <Canvas
+          paperType={notebook?.paperType ?? 'blank'}
+          strokes={strokes}
+          liveStroke={liveStroke}
+          tool={tool}
+          pdfDoc={pdfDoc}
+          pdfPageNum={activePage?.pdfPageNum ?? null}
+          onStartStroke={startStroke}
+          onAddPoint={addPoint}
+          onEndStroke={endStroke}
+          onEraseAt={eraseAt}
+          onThumbnailGenerated={handleThumbnailGenerated}
+        />
+      </div>
     </div>
   )
 }

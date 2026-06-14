@@ -3,7 +3,13 @@ import {
   getPages,
   putPage,
   deletePage as dbDeletePage,
+  getStrokes,
+  putStroke,
 } from '../db/index.js'
+
+function makeStrokeId() {
+  return `sk_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+}
 
 function makeId() {
   return `pg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
@@ -80,6 +86,40 @@ export function usePages(notebookId) {
     setActivePageId(loaded[0]?.id ?? null)
   }, [notebookId])
 
+  const duplicatePage = useCallback(async (id) => {
+    const idx = pages.findIndex((p) => p.id === id)
+    if (idx === -1) return
+    const original = pages[idx]
+    const newPageId = makeId()
+
+    const originalStrokes = await getStrokes(id)
+    const newStrokes = originalStrokes.map((s) => ({
+      ...s,
+      id: makeStrokeId(),
+      pageId: newPageId,
+    }))
+
+    const draft = [...pages]
+    draft.splice(idx + 1, 0, {
+      ...original,
+      id: newPageId,
+      updatedAt: Date.now(),
+    })
+    const renumbered = draft.map((p, i) => ({ ...p, order: i }))
+
+    for (const p of renumbered) await putPage(p)
+    for (const s of newStrokes) await putStroke(s)
+
+    setPages(renumbered)
+    setActivePageId(newPageId)
+  }, [pages])
+
+  const reorderPages = useCallback(async (newPages) => {
+    const renumbered = newPages.map((p, i) => ({ ...p, order: i }))
+    for (const p of renumbered) await putPage(p)
+    setPages(renumbered)
+  }, [])
+
   const activePage = pages.find((p) => p.id === activePageId) ?? null
 
   return {
@@ -90,6 +130,8 @@ export function usePages(notebookId) {
     loading,
     createPage,
     removePage,
+    duplicatePage,
+    reorderPages,
     updateThumbnail,
     reloadPages,
   }

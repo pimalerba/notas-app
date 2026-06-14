@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { renderStrokes, renderStroke } from '../../utils/drawing.js'
+import { makeDebouncedThumbnail } from '../../utils/thumbnail.js'
 import './Canvas.css'
 
 const PAPER_STYLE = {
@@ -33,12 +34,14 @@ export default function Canvas({
   onAddPoint,
   onEndStroke,
   onEraseAt,
+  onThumbnailGenerated,
 }) {
   const wrapRef = useRef(null)
   const canvasRef = useRef(null)
   const pdfCanvasRef = useRef(null)
   const isDown = useRef(false)
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
+  const debouncedThumb = useRef(makeDebouncedThumbnail(1500))
 
   // drawRef sempre aponta para a função de desenho com o closure mais recente
   const drawRef = useRef(null)
@@ -57,6 +60,12 @@ export default function Canvas({
   useEffect(() => {
     drawRef.current?.()
   }, [strokes, liveStroke])
+
+  // Gera miniatura debounced após mudança de traços
+  useEffect(() => {
+    if (!onThumbnailGenerated || !canvasSize.width || !strokes.length) return
+    debouncedThumb.current(strokes, canvasSize.width, canvasSize.height, onThumbnailGenerated)
+  }, [strokes, canvasSize, onThumbnailGenerated])
 
   // Renderiza a página do PDF no canvas de fundo
   useEffect(() => {
